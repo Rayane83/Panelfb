@@ -157,6 +157,14 @@ export function Header() {
                       <Settings className="h-4 w-4 mr-2" />
                       Paramètres
                     </Button>
+                    {(user?.role === 'superviseur' || user?.role === 'superadmin') && (
+                      <Button variant="ghost" className="w-full justify-start" size="sm" asChild>
+                        <a href="/staff">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Gestion Staff
+                        </a>
+                      </Button>
+                    )}
                   </div>
                   
                   <div className="p-2 border-t">

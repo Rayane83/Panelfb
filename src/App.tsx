@@ -10,6 +10,7 @@ import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
 import SuperAdminPage from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
+import StaffPage from './pages/StaffPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 const queryClient = new QueryClient()
@@ -117,6 +118,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredRoute="/hwip-admin">
             <HWIPAdminPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/staff" 
+        element={
+          <ProtectedRoute requiredRoute="/staff">
+            <StaffPage />
           </ProtectedRoute>
         } 
       />
