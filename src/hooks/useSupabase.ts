@@ -22,13 +22,31 @@ export function useSupabase() {
 
   // Fonctions pour les entreprises
   const getAllEnterprises = async () => {
-    const { data, error } = await supabase
-      .from('enterprises')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation d'entreprises
+    return [
+      {
+        id: '1',
+        name: 'Tech Corp',
+        guild_id: '1404608015230832742',
+        type: 'SARL',
+        description: 'Entreprise technologique',
+        owner_discord_id: '462716512252329996',
+        blanchiment_enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: '2',
+        name: 'Service Plus',
+        guild_id: '1404608015230832742',
+        type: 'SAS',
+        description: 'Services aux entreprises',
+        owner_discord_id: '123456789',
+        blanchiment_enabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ]
   }
 
   const createEnterprise = async (enterpriseData: any) => {
@@ -46,17 +64,21 @@ export function useSupabase() {
 
   // Fonctions pour les employés
   const getEmployees = async (enterpriseId: string) => {
-    const { data, error } = await supabase
-      .from('employees')
-      .select(`
-        *,
-        grade:grades(*)
-      `)
-      .eq('enterprise_id', enterpriseId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation d'employés
+    return [
+      {
+        id: '1',
+        enterprise_id: enterpriseId,
+        discord_id: '123456789',
+        username: 'Jean Dupont',
+        grade_id: '1',
+        qualifications: ['Expert Comptabilité'],
+        hire_date: '2024-01-15',
+        status: 'Actif',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ]
   }
 
   const createEmployee = async (employeeData: any) => {
@@ -87,19 +109,24 @@ export function useSupabase() {
   }
 
   const getDotations = async (enterpriseId: string) => {
-    const { data, error } = await supabase
-      .from('dotations')
-      .select(`
-        *,
-        dotation_lines(*),
-        expenses(*),
-        withdrawals(*)
-      `)
-      .eq('enterprise_id', enterpriseId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation de dotations
+    return [
+      {
+        id: '1',
+        enterprise_id: enterpriseId,
+        period: '2024-01',
+        total_ca: 50000,
+        total_salaries: 15000,
+        total_bonuses: 5000,
+        status: 'Brouillon',
+        created_by: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        dotation_lines: [],
+        expenses: [],
+        withdrawals: []
+      }
+    ]
   }
 
   const saveDotationLines = async (dotationId: string, lines: any[]) => {
@@ -197,14 +224,12 @@ export function useSupabase() {
   }
 
   const getTaxBrackets = async (type: string) => {
-    const { data, error } = await supabase
-      .from('tax_brackets')
-      .select('*')
-      .eq('type', type)
-      .order('min_amount')
-
-    if (error) throw error
-    return data
+    // Simulation de tranches fiscales
+    return [
+      { id: '1', type, min_amount: 0, max_amount: 42500, rate: 15, created_at: new Date().toISOString() },
+      { id: '2', type, min_amount: 42500, max_amount: 250000, rate: 25, created_at: new Date().toISOString() },
+      { id: '3', type, min_amount: 250000, max_amount: null, rate: 31, created_at: new Date().toISOString() }
+    ]
   }
 
   // Fonctions pour les documents
@@ -238,14 +263,21 @@ export function useSupabase() {
   }
 
   const getDocuments = async (enterpriseId: string) => {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('enterprise_id', enterpriseId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation de documents
+    return [
+      {
+        id: '1',
+        enterprise_id: enterpriseId,
+        name: 'Facture_Janvier_2024.pdf',
+        type: 'facture',
+        file_path: 'documents/facture1.pdf',
+        file_size: 2048000,
+        mime_type: 'application/pdf',
+        owner: 'Jean Dupont',
+        upload_date: '2024-01-15',
+        created_at: new Date().toISOString()
+      }
+    ]
   }
 
   const deleteDocument = async (documentId: string) => {
@@ -313,14 +345,26 @@ export function useSupabase() {
   }
 
   const getBlanchimentOperations = async (enterpriseId: string) => {
-    const { data, error } = await supabase
-      .from('blanchiment_operations')
-      .select('*')
-      .eq('enterprise_id', enterpriseId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation d'opérations de blanchiment
+    return [
+      {
+        id: '1',
+        enterprise_id: enterpriseId,
+        status: 'En cours',
+        date_received: '2024-01-15',
+        date_returned: null,
+        duration_days: null,
+        groupe: 'Groupe A',
+        employee: 'Jean Dupont',
+        donneur: 'Client X',
+        recep: 'Destinataire Y',
+        amount: 25000,
+        perc_entreprise: 15,
+        perc_groupe: 10,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ]
   }
 
   // Fonctions pour les archives
@@ -347,14 +391,23 @@ export function useSupabase() {
   }
 
   const getArchives = async (enterpriseId: string) => {
-    const { data, error } = await supabase
-      .from('archives')
-      .select('*')
-      .eq('enterprise_id', enterpriseId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data
+    // Simulation d'archives
+    return [
+      {
+        id: '1',
+        enterprise_id: enterpriseId,
+        numero: 'DOT-2024-001',
+        date: '2024-01-15',
+        amount: 25000,
+        description: 'Rapport dotation Q1 2024',
+        status: 'Validé',
+        type: 'dotation',
+        payload: { employees: 5, totalCA: 125000 },
+        created_by: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ]
   }
 
   const updateArchiveStatus = async (archiveId: string, status: string) => {

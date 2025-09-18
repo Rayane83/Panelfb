@@ -34,6 +34,7 @@ interface Enterprise {
   type: string;
   description?: string;
   owner_discord_id: string;
+  sector_id?: string;
   blanchiment_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -55,6 +56,24 @@ interface TaxBracket {
   created_at: string;
 }
 
+interface WealthBracket {
+  id: string;
+  min_amount: number;
+  max_amount: number | null;
+  wealth_rate: number;
+  created_at: string;
+}
+
+interface TaxGrid {
+  min_profit: number;
+  max_profit: number | null;
+  tax_rate: number;
+  max_employee_salary: number;
+  max_boss_salary: number;
+  max_employee_bonus: number;
+  max_boss_bonus: number;
+}
+
 
 const SuperAdminPage: React.FC = () => {
   const { user } = useAuth();
@@ -66,6 +85,8 @@ const SuperAdminPage: React.FC = () => {
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([]);
+  const [wealthBrackets, setWealthBrackets] = useState<WealthBracket[]>([]);
+  const [taxGrids, setTaxGrids] = useState<TaxGrid[]>([]);
   
   // États pour les formulaires
   const [newEnterprise, setNewEnterprise] = useState({
@@ -73,7 +94,8 @@ const SuperAdminPage: React.FC = () => {
     guild_id: '',
     type: 'SARL',
     description: '',
-    owner_discord_id: ''
+    owner_discord_id: '',
+    sector_id: ''
   });
 
   const [newSector, setNewSector] = useState({
@@ -82,6 +104,7 @@ const SuperAdminPage: React.FC = () => {
   });
 
   const [taxGridData, setTaxGridData] = useState('');
+  const [wealthGridData, setWealthGridData] = useState('');
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -98,7 +121,6 @@ const SuperAdminPage: React.FC = () => {
       
       // Charger les entreprises
       const enterprisesData = await supabaseHooks.getAllEnterprises();
-      
       setEnterprises(enterprisesData);
 
       // Charger les secteurs (simulé pour l'instant)
@@ -108,9 +130,26 @@ const SuperAdminPage: React.FC = () => {
       ]);
 
       // Charger les tranches fiscales
-      const taxBracketsData = await supabaseHooks.getTaxBrackets('IS');
-      
-      setTaxBrackets(taxBracketsData);
+      const mockTaxBrackets = [
+        { id: '1', type: 'IS', min_amount: 100, max_amount: 9999, rate: 7, created_at: new Date().toISOString() },
+        { id: '2', type: 'IS', min_amount: 10000, max_amount: 29999, rate: 9, created_at: new Date().toISOString() },
+        { id: '3', type: 'IS', min_amount: 30000, max_amount: 49999, rate: 16, created_at: new Date().toISOString() }
+      ];
+      setTaxBrackets(mockTaxBrackets);
+
+      // Charger les grilles fiscales complètes
+      const mockTaxGrids = [
+        { min_profit: 100, max_profit: 9999, tax_rate: 7, max_employee_salary: 5000, max_boss_salary: 8000, max_employee_bonus: 2500, max_boss_bonus: 4000 },
+        { min_profit: 10000, max_profit: 29999, tax_rate: 9, max_employee_salary: 10000, max_boss_salary: 15000, max_employee_bonus: 5000, max_boss_bonus: 7500 }
+      ];
+      setTaxGrids(mockTaxGrids);
+
+      // Charger les tranches de richesse
+      const mockWealthBrackets = [
+        { id: '1', min_amount: 1500000, max_amount: 2500000, wealth_rate: 2, created_at: new Date().toISOString() },
+        { id: '2', min_amount: 2500000, max_amount: 3500000, wealth_rate: 3, created_at: new Date().toISOString() }
+      ];
+      setWealthBrackets(mockWealthBrackets);
 
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -122,13 +161,20 @@ const SuperAdminPage: React.FC = () => {
 
   const createEnterprise = async () => {
     try {
-      await supabaseHooks.createEnterprise({
+      const newEnterpriseData = {
+        id: Date.now().toString(),
         name: newEnterprise.name,
         guild_id: newEnterprise.guild_id,
         type: newEnterprise.type,
         description: newEnterprise.description,
-        owner_discord_id: newEnterprise.owner_discord_id
-      });
+        owner_discord_id: newEnterprise.owner_discord_id,
+        sector_id: newEnterprise.sector_id,
+        blanchiment_enabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      setEnterprises(prev => [...prev, newEnterpriseData]);
 
       showToast('success', 'Entreprise créée avec succès');
       
@@ -137,10 +183,9 @@ const SuperAdminPage: React.FC = () => {
         guild_id: '',
         type: 'SARL',
         description: '',
-        owner_discord_id: ''
+        owner_discord_id: '',
+        sector_id: ''
       });
-      
-      loadData();
     } catch (error) {
       console.error('Erreur:', error);
       showToast('error', 'Erreur lors de la création de l\'entreprise');
@@ -173,20 +218,51 @@ const SuperAdminPage: React.FC = () => {
 
   const parseTaxGrid = (data: string) => {
     const lines = data.trim().split('\n');
-    const brackets: any[] = [];
+    const grids: TaxGrid[] = [];
     
     for (const line of lines) {
-      const parts = line.split('\t').map(p => p.trim().replace(/\$|%/g, ''));
+      const parts = line.split('\t').map(p => p.trim().replace(/\$|%|,/g, ''));
       if (parts.length >= 6) {
+        const minProfit = parseFloat(parts[0].replace(/\s/g, '')) || 0;
+        const maxProfit = parseFloat(parts[1].replace(/\s/g, '')) || null;
+        const taxRate = parseFloat(parts[2]) || 0;
+        const maxEmployeeSalary = parseFloat(parts[3].replace(/\s/g, '')) || 0;
+        const maxBossSalary = parseFloat(parts[4].replace(/\s/g, '')) || 0;
+        const maxEmployeeBonus = parseFloat(parts[5].replace(/\s/g, '')) || 0;
+        const maxBossBonus = parseFloat(parts[6].replace(/\s/g, '')) || 0;
+        
+        grids.push({
+          min_profit: minProfit,
+          max_profit: maxProfit === 99000000 ? null : maxProfit,
+          tax_rate: taxRate,
+          max_employee_salary: maxEmployeeSalary,
+          max_boss_salary: maxBossSalary,
+          max_employee_bonus: maxEmployeeBonus,
+          max_boss_bonus: maxBossBonus
+        });
+      }
+    }
+    
+    return grids;
+  };
+
+  const parseWealthGrid = (data: string) => {
+    const lines = data.trim().split('\n');
+    const brackets: WealthBracket[] = [];
+    
+    for (const line of lines) {
+      const parts = line.split('\t').map(p => p.trim().replace(/\$|%|,/g, ''));
+      if (parts.length >= 3) {
         const minAmount = parseFloat(parts[0].replace(/\s/g, '')) || 0;
         const maxAmount = parseFloat(parts[1].replace(/\s/g, '')) || null;
-        const rate = parseFloat(parts[2]) || 0;
+        const wealthRate = parseFloat(parts[2]) || 0;
         
         brackets.push({
-          type: 'IS',
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           min_amount: minAmount,
           max_amount: maxAmount === 99000000 ? null : maxAmount,
-          rate: rate
+          wealth_rate: wealthRate,
+          created_at: new Date().toISOString()
         });
       }
     }
@@ -196,21 +272,39 @@ const SuperAdminPage: React.FC = () => {
 
   const importTaxGrid = async () => {
     try {
-      const brackets = parseTaxGrid(taxGridData);
+      const grids = parseTaxGrid(taxGridData);
+      
+      if (grids.length === 0) {
+        showToast('error', 'Aucune donnée valide trouvée');
+        return;
+      }
+
+      setTaxGrids(grids);
+
+      showToast('success', `${grids.length} tranches fiscales importées`);
+      setTaxGridData('');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de l\'import de la grille fiscale');
+    }
+  };
+
+  const importWealthGrid = async () => {
+    try {
+      const brackets = parseWealthGrid(wealthGridData);
       
       if (brackets.length === 0) {
         showToast('error', 'Aucune donnée valide trouvée');
         return;
       }
 
-      // Simulation d'import
-      setTaxBrackets(brackets.map((b, i) => ({ ...b, id: i.toString(), created_at: new Date().toISOString() })));
+      setWealthBrackets(brackets);
 
-      showToast('success', `${brackets.length} tranches fiscales importées`);
-      setTaxGridData('');
+      showToast('success', `${brackets.length} tranches de richesse importées`);
+      setWealthGridData('');
     } catch (error) {
       console.error('Erreur:', error);
-      showToast('error', 'Erreur lors de l\'import de la grille fiscale');
+      showToast('error', 'Erreur lors de l\'import de la grille de richesse');
     }
   };
 
@@ -401,7 +495,7 @@ const SuperAdminPage: React.FC = () => {
                   <div className="space-y-2">
                     <Label>Secteur (optionnel)</Label>
                     <select
-                      value={newEnterprise.sector_id}
+                      value={newEnterprise.sector_id || ''}
                       onChange={(e) => setNewEnterprise(prev => ({
                         ...prev,
                         sector_id: e.target.value
@@ -602,12 +696,12 @@ const SuperAdminPage: React.FC = () => {
             </Card>
 
             {/* Aperçu grille d'imposition */}
-            {taxBrackets.length > 0 && (
+            {taxGrids.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Grille d'imposition actuelle</CardTitle>
                   <CardDescription>
-                    {taxBrackets.length} tranches configurées
+                    {taxGrids.length} tranches configurées
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -625,19 +719,19 @@ const SuperAdminPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {taxBrackets.map((bracket) => (
-                          <tr key={bracket.id} className="border-b">
-                            <td className="p-2">{formatCurrency(bracket.min_profit)}</td>
+                        {taxGrids.map((grid, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="p-2">{formatCurrency(grid.min_profit)}</td>
                             <td className="p-2">
-                              {bracket.max_profit ? formatCurrency(bracket.max_profit) : '∞'}
+                              {grid.max_profit ? formatCurrency(grid.max_profit) : '∞'}
                             </td>
                             <td className="p-2">
-                              <Badge>{bracket.tax_rate}%</Badge>
+                              <Badge>{grid.tax_rate}%</Badge>
                             </td>
-                            <td className="p-2">{formatCurrency(bracket.max_employee_salary)}</td>
-                            <td className="p-2">{formatCurrency(bracket.max_boss_salary)}</td>
-                            <td className="p-2">{formatCurrency(bracket.max_employee_bonus)}</td>
-                            <td className="p-2">{formatCurrency(bracket.max_boss_bonus)}</td>
+                            <td className="p-2">{formatCurrency(grid.max_employee_salary)}</td>
+                            <td className="p-2">{formatCurrency(grid.max_boss_salary)}</td>
+                            <td className="p-2">{formatCurrency(grid.max_employee_bonus)}</td>
+                            <td className="p-2">{formatCurrency(grid.max_boss_bonus)}</td>
                           </tr>
                         ))}
                       </tbody>

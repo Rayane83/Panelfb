@@ -113,41 +113,13 @@ export function DashboardTab() {
         const totalBonuses = latestDotation?.total_bonuses || 0
 
         stats.push({
-          id: enterprise.id,
-          name: enterprise.name,
-          employeeCount: employees.length,
-          totalCA,
-          totalSalaries,
-          totalBonuses,
+  const maxEmployeeSalary = currentStats ? 5000 : 0
+  const maxBossSalary = currentStats ? 8000 : 0
+  const maxEmployeeBonus = currentStats ? 2500 : 0
+  const maxBossBonus = currentStats ? 4000 : 0
+  const taxRate = currentStats ? 7 : 0
+  const wealthTax = currentStats ? 2 : 0
           documentsCount: documents.length,
-          archivesCount: archives.length,
-          blanchimentCount: blanchimentOps.length,
-          lastActivity: enterprise.updated_at,
-          maxEmployeeSalary: 0,
-          maxBossSalary: 0,
-          maxEmployeeBonus: 0,
-          maxBossBonus: 0,
-          taxRate: 0,
-          wealthTax: 0,
-          netProfit: totalCA - totalSalaries - totalBonuses
-        })
-      }
-
-      setEnterpriseStats(stats)
-    } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const getAvatarUrl = () => {
-    if (user?.avatar) {
-      return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`
-    }
-    return `https://cdn.discordapp.com/embed/avatars/${parseInt(user?.discriminator || '0') % 5}.png`
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
