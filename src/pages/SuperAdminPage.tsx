@@ -669,6 +669,12 @@ export function SuperAdminPage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-4">
+                <Button className="w-full">
+                  <Shuffle className="mr-2 h-4 w-4" />
+                  Sauvegarder Configuration
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
