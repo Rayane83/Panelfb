@@ -137,7 +137,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             currentGuild: processedGuilds[0],
             role: highestRole.role as UserRole,
             roleLevel: highestRole.roleLevel,
-            enterprises: []
+            enterprises: [],
+            allGuildRoles: highestRole.allGuildRoles
           }
           
           // Créer/mettre à jour l'utilisateur et récupérer ses entreprises

@@ -129,6 +129,21 @@ export function Header() {
                         <Badge className={`mt-1 bg-gradient-to-r ${roleColors[user?.role || 'employee']} text-white border-0 text-xs`}>
                           {roleLabels[user?.role || 'employee']} • Niveau {user?.roleLevel}
                         </Badge>
+                        
+                        {/* Affichage des rôles par guilde */}
+                        {user?.allGuildRoles && user.allGuildRoles.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs text-muted-foreground font-medium">Rôles Discord:</p>
+                            {user.allGuildRoles.map((guildRole, index) => (
+                              <div key={index} className="text-xs">
+                                <span className="font-medium">{guildRole.guildName}:</span>
+                                <span className="ml-1 text-muted-foreground">
+                                  {guildRole.userRole.roleName} ({guildRole.roles.length} rôles)
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

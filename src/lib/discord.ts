@@ -245,13 +245,17 @@ export async function getHighestRoleFromAllGuilds(
   roleLevel: number
   roleName: string
   guildName: string
+  allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[]
 }> {
   let highestRole = { 
     role: 'employee', 
     roleLevel: 1, 
     roleName: 'Employé',
-    guildName: 'Aucune'
+    guildName: 'Aucune',
+    allGuildRoles: []
   }
+  
+  const allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[] = []
 
   // Le fondateur est toujours superadmin
   if (userId === FOUNDER_DISCORD_ID) {
@@ -259,7 +263,8 @@ export async function getHighestRoleFromAllGuilds(
       role: 'superadmin',
       roleLevel: 7,
       roleName: 'Fondateur',
-      guildName: 'Système'
+      guildName: 'Système',
+      allGuildRoles
     }
   }
   
@@ -274,6 +279,14 @@ export async function getHighestRoleFromAllGuilds(
       const userRoles = await DiscordAuth.getUserRolesInGuild(userId, guild.id)
       const guildRoles = await DiscordAuth.getGuildRoles(guild.id)
       
+      // Stocker les informations de rôles pour cette guilde
+      const guildRoleInfo = {
+        guildId: guild.id,
+        guildName: guild.name,
+        roles: userRoles,
+        userRole: null as any
+      }
+      
       const roleInfo = determineUserRoleFromDiscordData(
         userId, 
         userRoles, 
@@ -282,16 +295,30 @@ export async function getHighestRoleFromAllGuilds(
         guild.id
       )
       
+      guildRoleInfo.userRole = roleInfo
+      allGuildRoles.push(guildRoleInfo)
+      
       if (roleInfo.roleLevel > highestRole.roleLevel) {
         highestRole = {
           ...roleInfo,
-          guildName: guild.name
+          guildName: guild.name,
+          allGuildRoles
         }
       }
     } catch (error) {
       console.warn(`Error processing guild ${guild.name}:`, error)
+      // Ajouter même en cas d'erreur pour le debug
+      allGuildRoles.push({
+        guildId: guild.id,
+        guildName: guild.name,
+        roles: [],
+        userRole: { role: 'employee', roleLevel: 1, roleName: 'Erreur' }
+      })
     }
   }
   
-  return highestRole
+  return {
+    ...highestRole,
+    allGuildRoles
+  }
 }
