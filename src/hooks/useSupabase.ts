@@ -32,14 +32,16 @@ export function useSupabase() {
   }
 
   const createEnterprise = async (enterpriseData: any) => {
-    const { data, error } = await supabase
-      .from('enterprises')
-      .insert(enterpriseData)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    // Simulation de création d'entreprise
+    const newEnterprise = {
+      id: Date.now().toString(),
+      ...enterpriseData,
+      blanchiment_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    return newEnterprise
   }
 
   // Fonctions pour les employés
