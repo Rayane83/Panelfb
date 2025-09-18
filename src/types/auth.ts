@@ -6,6 +6,8 @@ export interface User {
   discriminator: string
   avatar?: string
   email?: string
+  firstName?: string
+  lastName?: string
   guilds: Guild[]
   currentGuild?: Guild
   role: UserRole
@@ -51,4 +53,6 @@ export interface AuthContextType {
   logout: () => void
   switchGuild: (guildId: string) => void
   hasPermission: (permission: string) => boolean
+  updateProfile: (profileData: { firstName: string; lastName: string; avatar: string }) => Promise<void>
+  refreshRoles: () => Promise<void>
 }

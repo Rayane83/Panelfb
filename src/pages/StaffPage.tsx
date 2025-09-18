@@ -14,7 +14,8 @@ import {
   XCircle,
   Search,
   Clock,
-  Calendar
+  Calendar,
+  RefreshCw
 } from 'lucide-react';
 import { useSupabase } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -23,12 +24,16 @@ interface Enterprise {
   id: string;
   name: string;
   guild_id: string;
-  blanchiment_enabled: boolean;
   type: string;
+  description?: string;
+  owner_discord_id: string;
+  settings: any;
   employees_count: number;
   last_dotation_date?: string;
   dotation_status: 'sent' | 'not_sent' | 'late';
   days_since_dotation: number;
+  created_at: string;
+  updated_at: string;
 }
 
 const StaffPage: React.FC = () => {
@@ -54,26 +59,50 @@ const StaffPage: React.FC = () => {
       
       const enterprisesData = await supabaseHooks.getAllEnterprises();
 
-      // Simuler les données de dotation et statut
-      const processedEnterprises = enterprisesData.map(enterprise => {
-        const lastDotationDays = Math.floor(Math.random() * 45); // 0-45 jours
-        const lastDotationDate = new Date(Date.now() - lastDotationDays * 24 * 60 * 60 * 1000);
-        
-        let dotationStatus: 'sent' | 'not_sent' | 'late' = 'sent';
-        if (lastDotationDays > 30) {
-          dotationStatus = 'late';
-        } else if (lastDotationDays > 25) {
-          dotationStatus = 'not_sent';
-        }
+      // Traiter les données et calculer les statuts de dotation
+      const processedEnterprises = await Promise.all(
+        enterprisesData.map(async (enterprise) => {
+          // Récupérer les dotations pour calculer le statut
+          const dotations = await supabaseHooks.getDotations(enterprise.id);
+          const employees = await supabaseHooks.getEmployees(enterprise.id);
+          
+          let dotationStatus: 'sent' | 'not_sent' | 'late' = 'not_sent';
+          let daysSinceDotation = 0;
+          let lastDotationDate: string | undefined;
 
-        return {
-          ...enterprise,
-          employees_count: Math.floor(Math.random() * 20) + 1,
-          last_dotation_date: lastDotationDate.toISOString(),
-          dotation_status: dotationStatus,
-          days_since_dotation: lastDotationDays
-        };
-      });
+          if (dotations.length > 0) {
+            const latestDotation = dotations[0];
+            lastDotationDate = latestDotation.created_at;
+            const dotationDate = new Date(latestDotation.created_at);
+            const now = new Date();
+            daysSinceDotation = Math.floor((now.getTime() - dotationDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceDotation <= 30) {
+              dotationStatus = 'sent';
+            } else {
+              dotationStatus = 'late';
+            }
+          } else {
+            // Pas de dotation = en retard si l'entreprise existe depuis plus de 30 jours
+            const creationDate = new Date(enterprise.created_at);
+            const now = new Date();
+            const daysSinceCreation = Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceCreation > 30) {
+              dotationStatus = 'late';
+              daysSinceDotation = daysSinceCreation;
+            }
+          }
+
+          return {
+            ...enterprise,
+            employees_count: employees.length,
+            last_dotation_date: lastDotationDate,
+            dotation_status: dotationStatus,
+            days_since_dotation: daysSinceDotation
+          };
+        })
+      );
 
       setEnterprises(processedEnterprises);
     } catch (error) {
@@ -86,10 +115,16 @@ const StaffPage: React.FC = () => {
 
   const toggleBlanchiment = async (enterpriseId: string, enabled: boolean) => {
     try {
-      // Simulation de la mise à jour
+      await supabaseHooks.updateEnterpriseBlanchimentStatus(enterpriseId, enabled);
+      
+      // Mettre à jour l'état local
       setEnterprises(prev => prev.map(enterprise => 
         enterprise.id === enterpriseId 
-          ? { ...enterprise, blanchiment_enabled: enabled }
+          ? { 
+              ...enterprise, 
+              settings: { ...enterprise.settings, blanchiment_enabled: enabled },
+              updated_at: new Date().toISOString()
+            }
           : enterprise
       ));
 
@@ -110,7 +145,7 @@ const StaffPage: React.FC = () => {
   );
 
   const totalEnterprises = enterprises.length;
-  const blanchimentEnabled = enterprises.filter(e => e.blanchiment_enabled).length;
+  const blanchimentEnabled = enterprises.filter(e => e.settings?.blanchiment_enabled).length;
   const dotationsSent = enterprises.filter(e => e.dotation_status === 'sent').length;
   const dotationsLate = enterprises.filter(e => e.dotation_status === 'late').length;
 
@@ -122,6 +157,9 @@ const StaffPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-red-600 mb-2">Accès Refusé</h2>
           <p className="text-muted-foreground">
             Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Rôle requis: Superviseur ou SuperAdmin
           </p>
         </div>
       </div>
@@ -176,11 +214,17 @@ const StaffPage: React.FC = () => {
         </div>
       )}
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Gestion Staff</h1>
-        <p className="text-muted-foreground">
-          Gestion du blanchiment et suivi des dotations par entreprise
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Gestion Staff</h1>
+          <p className="text-muted-foreground">
+            Gestion du blanchiment et suivi des dotations par entreprise
+          </p>
+        </div>
+        <Button onClick={loadEnterprises} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
       </div>
 
       {/* Statistiques */}
@@ -269,7 +313,7 @@ const StaffPage: React.FC = () => {
                     <div>
                       <p className="font-medium">{enterprise.name}</p>
                       <div className="flex items-center space-x-2 mt-1">
-                        {enterprise.blanchiment_enabled ? (
+                        {enterprise.settings?.blanchiment_enabled ? (
                           <Badge className="bg-green-100 text-green-800">
                             <Shield className="h-3 w-3 mr-1" />
                             Blanchiment Activé
@@ -292,14 +336,15 @@ const StaffPage: React.FC = () => {
                   <div className="flex items-center space-x-6 text-sm text-muted-foreground ml-8">
                     <span>Guild: {enterprise.guild_id}</span>
                     <span>Employés: {enterprise.employees_count}</span>
-                    {enterprise.last_dotation_date && (
-                      <span className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          Dernière dotation: il y a {enterprise.days_since_dotation} jour(s)
-                        </span>
+                    <span className="flex items-center space-x-1">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {enterprise.last_dotation_date 
+                          ? `Dernière dotation: il y a ${enterprise.days_since_dotation} jour(s)`
+                          : 'Aucune dotation envoyée'
+                        }
                       </span>
-                    )}
+                    </span>
                   </div>
                 </div>
                 
@@ -310,7 +355,7 @@ const StaffPage: React.FC = () => {
                     </Label>
                     <Switch
                       id={`blanchiment-${enterprise.id}`}
-                      checked={enterprise.blanchiment_enabled}
+                      checked={enterprise.settings?.blanchiment_enabled || false}
                       onCheckedChange={(checked) => toggleBlanchiment(enterprise.id, checked)}
                     />
                   </div>
@@ -335,10 +380,10 @@ const StaffPage: React.FC = () => {
 
       {/* Actions rapides et informations */}
       <div className="grid gap-4 md:grid-cols-2 mt-6">
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
           <CardHeader>
-            <CardTitle className="text-green-800">Actions Rapides</CardTitle>
-            <CardDescription className="text-green-700">
+            <CardTitle className="text-green-800 dark:text-green-200">Actions Rapides</CardTitle>
+            <CardDescription className="text-green-700 dark:text-green-300">
               Gestion en lot des autorisations
             </CardDescription>
           </CardHeader>
@@ -349,7 +394,7 @@ const StaffPage: React.FC = () => {
               onClick={() => {
                 if (confirm('Activer le blanchiment pour toutes les entreprises ?')) {
                   enterprises.forEach(enterprise => {
-                    if (!enterprise.blanchiment_enabled) {
+                    if (!enterprise.settings?.blanchiment_enabled) {
                       toggleBlanchiment(enterprise.id, true);
                     }
                   });
@@ -365,7 +410,7 @@ const StaffPage: React.FC = () => {
               onClick={() => {
                 if (confirm('Désactiver le blanchiment pour toutes les entreprises ?')) {
                   enterprises.forEach(enterprise => {
-                    if (enterprise.blanchiment_enabled) {
+                    if (enterprise.settings?.blanchiment_enabled) {
                       toggleBlanchiment(enterprise.id, false);
                     }
                   });
@@ -378,25 +423,25 @@ const StaffPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
           <CardHeader>
-            <CardTitle className="text-blue-800">Suivi des Dotations</CardTitle>
-            <CardDescription className="text-blue-700">
+            <CardTitle className="text-blue-800 dark:text-blue-200">Suivi des Dotations</CardTitle>
+            <CardDescription className="text-blue-700 dark:text-blue-300">
               Statuts et alertes
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-blue-800">
+          <CardContent className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <span>Envoyée: Dotation reçue dans les temps</span>
+              <span>Envoyée: Dotation reçue dans les temps (≤30 jours)</span>
             </div>
             <div className="flex items-center space-x-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span>Non envoyée: Dotation attendue</span>
+              <span>Non envoyée: Aucune dotation reçue</span>
             </div>
             <div className="flex items-center space-x-2">
               <XCircle className="h-4 w-4 text-red-600" />
-              <span>En retard: Plus de 30 jours</span>
+              <span>En retard: Plus de 30 jours sans dotation</span>
             </div>
             <p className="mt-3 text-xs">
               Les entreprises en retard nécessitent un suivi particulier

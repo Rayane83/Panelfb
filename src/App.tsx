@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './components/providers/AuthProvider'
+import { ThemeProvider } from './hooks/useTheme'
 import { useAuth } from './hooks/useAuth'
 import { usePermissions } from './hooks/usePermissions'
 import { Header } from './components/layout/Header'
@@ -137,13 +138,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-background text-foreground">
-            <AppRoutes />
-          </div>
-        </Router>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+              <AppRoutes />
+            </div>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

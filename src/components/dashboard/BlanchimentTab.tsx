@@ -211,14 +211,26 @@ export function BlanchimentTab() {
       return
     }
 
-    // Simulation de la sauvegarde
-    const linesToSave = lines.filter(l => !l.markedForDeletion)
-    const linesToDelete = lines.filter(l => l.markedForDeletion)
-    
-    // Supprimer les lignes marquées pour suppression
-    setLines(linesToSave.map(line => ({ ...line, isTemporary: false })))
-    
-    showToast('success', `Configuration sauvegardée. ${linesToSave.length} ligne(s) mise(s) à jour, ${linesToDelete.length} ligne(s) supprimée(s)`)
+    // Sauvegarder via Supabase
+    const enterpriseId = user?.enterprises?.[0]?.id || user?.currentGuild?.id
+    if (enterpriseId) {
+      supabaseHooks.saveBlanchimentOperations(enterpriseId, lines)
+        .then(() => {
+          const linesToSave = lines.filter(l => !l.markedForDeletion)
+          const linesToDelete = lines.filter(l => l.markedForDeletion)
+          
+          // Supprimer les lignes marquées pour suppression
+          setLines(linesToSave.map(line => ({ ...line, isTemporary: false })))
+          
+          showToast('success', `Configuration sauvegardée. ${linesToSave.length} ligne(s) mise(s) à jour, ${linesToDelete.length} ligne(s) supprimée(s)`)
+        })
+        .catch((error) => {
+          console.error('Erreur lors de la sauvegarde:', error)
+          showToast('error', 'Erreur lors de la sauvegarde')
+        })
+    } else {
+      showToast('error', 'Aucune entreprise sélectionnée')
+    }
   }
 
   const handleExport = (format: 'pdf' | 'excel') => {

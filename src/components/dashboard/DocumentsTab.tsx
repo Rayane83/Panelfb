@@ -132,6 +132,12 @@ export function DocumentsTab() {
     if (!selectedFiles || !canUpload) return
 
     try {
+      const enterpriseId = user?.enterprises?.[0]?.id || user?.currentGuild?.id
+      if (!enterpriseId) {
+        showToast('error', 'Aucune entreprise sélectionnée')
+        return
+      }
+
       const newDocuments = Array.from(selectedFiles).map(file => ({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         name: file.name,
@@ -143,10 +149,24 @@ export function DocumentsTab() {
         url: URL.createObjectURL(file)
       }))
 
+      // Simuler l'upload vers Supabase
+      Promise.all(newDocuments.map(doc => 
+        supabaseHooks.uploadDocument(selectedFiles[0], {
+          enterpriseId,
+          type: uploadMetadata.type,
+          owner: uploadMetadata.owner,
+          date: uploadMetadata.date
+        })
+      )).then(() => {
+        showToast('success', `${newDocuments.length} fichier(s) uploadé(s) avec succès`)
+      }).catch((error) => {
+        console.error('Erreur upload:', error)
+        showToast('error', 'Erreur lors de l\'upload')
+      })
+
       setDocuments(prev => [...prev, ...newDocuments])
       setSelectedFiles(null)
       setPreviewMode(false)
-      showToast('success', `${newDocuments.length} fichier(s) uploadé(s) avec succès`)
       
       // Reset file input
       if (fileInputRef.current) {

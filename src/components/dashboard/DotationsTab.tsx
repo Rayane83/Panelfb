@@ -313,8 +313,9 @@ export function DotationsTab() {
       
       if (!dotationId) {
         // Créer une nouvelle dotation
+        const enterpriseId = user.enterprises?.[0]?.id || user.currentGuild.id
         const dotation = await supabaseHooks.createDotation(
-          user.currentGuild.id,
+          enterpriseId,
           `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
         )
         dotationId = dotation.id
@@ -345,6 +346,7 @@ export function DotationsTab() {
     try {
       setIsLoading(true)
       
+      const enterpriseId = user.enterprises?.[0]?.id || user.currentGuild.id
       const reportData = {
         type: 'dotation',
         description: `Rapport dotation ${new Date().toLocaleDateString('fr-FR')}`,
@@ -360,7 +362,7 @@ export function DotationsTab() {
         }
       }
       
-      await supabaseHooks.archiveReport(user.currentGuild.id, reportData)
+      await supabaseHooks.archiveReport(enterpriseId, reportData)
       showToast('success', 'Rapport envoyé aux archives')
     } catch (error) {
       console.error('Erreur lors de l\'archivage:', error)
