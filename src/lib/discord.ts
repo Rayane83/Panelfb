@@ -208,12 +208,13 @@ export function determineUserRoleFromDiscordData(
 
   // Vérifier les rôles par priorité (du plus élevé au plus bas)
   const roleChecks = [
-    { keywords: ['superadmin', 'super admin', 'super-admin', 'fondateur'], role: 'superadmin', level: 7, name: 'SuperAdmin' },
-    { keywords: ['superviseur', 'supervisor', 'staff', 'admin', 'administrateur'], role: 'superviseur', level: 6, name: 'Superviseur' },
-    { keywords: ['dot', 'directeur', 'direction', 'fiscal'], role: 'dot', level: 5, name: 'DOT' },
-    { keywords: ['patron', 'owner', 'propriétaire', 'ceo', 'boss'], role: 'patron', level: 4, name: 'Patron' },
-    { keywords: ['co-patron', 'copatron', 'co patron', 'vice', 'adjoint'], role: 'co_patron', level: 3, name: 'Co-Patron' },
-    { keywords: ['employee', 'employé', 'membre'], role: 'employee', level: 1, name: 'Employé' }
+    { keywords: ['superadmin', 'super admin', 'super-admin', 'fondateur', 'founder'], role: 'superadmin', level: 7, name: 'SuperAdmin' },
+    { keywords: ['superviseur', 'supervisor', 'staff', 'admin', 'administrateur', 'moderateur', 'mod'], role: 'superviseur', level: 6, name: 'Superviseur' },
+    { keywords: ['dot', 'directeur', 'direction', 'fiscal', 'tresorier'], role: 'dot', level: 5, name: 'DOT' },
+    { keywords: ['patron', 'owner', 'propriétaire', 'ceo', 'boss', 'chef', 'directeur général'], role: 'patron', level: 4, name: 'Patron' },
+    { keywords: ['co-patron', 'copatron', 'co patron', 'vice', 'adjoint', 'vice-président', 'sous-chef'], role: 'co_patron', level: 3, name: 'Co-Patron' },
+    { keywords: ['manager', 'responsable', 'chef équipe', 'team lead'], role: 'co_patron', level: 2, name: 'Manager' },
+    { keywords: ['employee', 'employé', 'membre', 'worker', 'staff member'], role: 'employee', level: 1, name: 'Employé' }
   ]
 
   // Parcourir les rôles de l'utilisateur

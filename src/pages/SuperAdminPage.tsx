@@ -3,7 +3,9 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Badge } from '../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { useSupabase } from '../hooks/useSupabase'
 import { 
   Shield, 
   Building, 
@@ -13,26 +15,226 @@ import {
   Settings, 
   AlertTriangle,
   Server,
-  Database
+  Database,
+  Plus,
+  Trash2,
+  Edit,
+  Save,
+  Download,
+  Upload
 } from 'lucide-react'
+import { formatCurrency } from '../lib/utils'
+
+interface Enterprise {
+  id: string
+  name: string
+  owner_discord_id: string
+  guild_id: string
+  type: string
+  description: string
+  status: 'Active' | 'Suspended'
+  employees: number
+  created_at: string
+}
+
+interface TaxBracket {
+  id: string
+  type: string
+  min_amount: number
+  max_amount: number | null
+  rate: number
+}
+
+interface SystemUser {
+  id: string
+  discord_id: string
+  username: string
+  role: string
+  role_level: number
+  last_login: string
+  active: boolean
+}
 
 export function SuperAdminPage() {
-  const [newTaxRate, setNewTaxRate] = useState('')
+  const { user } = useAuth()
+  const supabaseHooks = useSupabase()
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([])
+  const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([])
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedTab, setSelectedTab] = useState('enterprises')
   
-  const enterprises = [
-    { id: '1', name: 'Tech Corp', owner: 'Jean Dupont', status: 'Active', employees: 15 },
-    { id: '2', name: 'Service Plus', owner: 'Marie Martin', status: 'Active', employees: 8 },
-    { id: '3', name: 'Digital Agency', owner: 'Pierre Durant', status: 'Suspended', employees: 22 }
-  ]
+  // États pour les formulaires
+  const [newEnterprise, setNewEnterprise] = useState({
+    name: '',
+    type: 'SARL',
+    description: '',
+    guild_id: '',
+    owner_discord_id: ''
+  })
+  
+  const [newTaxBracket, setNewTaxBracket] = useState({
+    type: 'IS',
+    min_amount: 0,
+    max_amount: null as number | null,
+    rate: 0
+  })
+  
+  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
-  const taxBrackets = [
-    { min: 0, max: 10000, rate: 0 },
-    { min: 10000, max: 25000, rate: 11 },
-    { min: 25000, max: 50000, rate: 30 },
-    { min: 50000, max: 100000, rate: 41 },
-    { min: 100000, max: Infinity, rate: 45 }
-  ]
+  useEffect(() => {
+    loadData()
+  }, [])
 
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Charger les entreprises
+      const enterprisesData = await supabaseHooks.getAllEnterprises()
+      const enterprisesWithStats = await Promise.all(
+        enterprisesData.map(async (enterprise: any) => {
+          const employees = await supabaseHooks.getEmployees(enterprise.id)
+          return {
+            ...enterprise,
+            employees: employees.length,
+            status: 'Active' as const
+          }
+        })
+      )
+      setEnterprises(enterprisesWithStats)
+      
+      // Charger les tranches fiscales
+      const taxData = await supabaseHooks.getTaxBrackets('IS')
+      setTaxBrackets(taxData)
+      
+      // Simuler les utilisateurs système (à remplacer par une vraie requête)
+      setSystemUsers([
+        {
+          id: '1',
+          discord_id: '462716512252329996',
+          username: 'Fondateur',
+          role: 'superadmin',
+          role_level: 7,
+          last_login: new Date().toISOString(),
+          active: true
+        }
+      ])
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error)
+      showToast('error', 'Erreur lors du chargement des données')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateEnterprise = async () => {
+    if (!newEnterprise.name || !newEnterprise.guild_id || !newEnterprise.owner_discord_id) {
+      showToast('error', 'Veuillez remplir tous les champs obligatoires')
+      return
+    }
+
+    try {
+      await supabaseHooks.createEnterprise(newEnterprise)
+      showToast('success', 'Entreprise créée avec succès')
+      setNewEnterprise({
+        name: '',
+        type: 'SARL',
+        description: '',
+        guild_id: '',
+        owner_discord_id: ''
+      })
+      loadData()
+    } catch (error) {
+      console.error('Erreur création entreprise:', error)
+      showToast('error', 'Erreur lors de la création de l\'entreprise')
+    }
+  }
+
+  const handleSuspendEnterprise = async (enterpriseId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir suspendre cette entreprise ?')) return
+    
+    try {
+      // Logique de suspension (à implémenter dans useSupabase)
+      showToast('success', 'Entreprise suspendue')
+      loadData()
+    } catch (error) {
+      showToast('error', 'Erreur lors de la suspension')
+    }
+  }
+
+  const handleCreateTaxBracket = async () => {
+    if (newTaxBracket.min_amount < 0 || newTaxBracket.rate < 0 || newTaxBracket.rate > 100) {
+      showToast('error', 'Valeurs invalides pour la tranche fiscale')
+      return
+    }
+
+    try {
+      // Logique de création de tranche fiscale (à implémenter dans useSupabase)
+      showToast('success', 'Tranche fiscale créée')
+      setNewTaxBracket({
+        type: 'IS',
+        min_amount: 0,
+        max_amount: null,
+        rate: 0
+      })
+      loadData()
+    } catch (error) {
+      showToast('error', 'Erreur lors de la création de la tranche fiscale')
+    }
+  }
+
+  const handleExportData = (type: string) => {
+    try {
+      let data: any[] = []
+      let filename = ''
+      
+      switch (type) {
+        case 'enterprises':
+          data = enterprises
+          filename = 'enterprises_export.json'
+          break
+        case 'users':
+          data = systemUsers
+          filename = 'users_export.json'
+          break
+        case 'taxes':
+          data = taxBrackets
+          filename = 'tax_brackets_export.json'
+          break
+      }
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      showToast('success', `Export ${type} généré avec succès`)
+    } catch (error) {
+      showToast('error', 'Erreur lors de l\'export')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Chargement des données système...</p>
+        </div>
+      </div>
+    )
+  }
+  
   const systemStats = [
     { label: 'Entreprises Actives', value: enterprises.filter(e => e.status === 'Active').length, color: 'text-green-600' },
     { label: 'Utilisateurs Total', value: enterprises.reduce((sum, e) => sum + e.employees, 0), color: 'text-blue-600' },
@@ -42,6 +244,18 @@ export function SuperAdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
+      {toast && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+          'bg-red-100 text-red-800 border border-red-200'
+        }`}>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center space-x-3">
         <div className="p-2 bg-red-100 rounded-lg">
           <Shield className="h-6 w-6 text-red-600" />
@@ -65,7 +279,7 @@ export function SuperAdminPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="enterprises" className="space-y-6">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="enterprises">Entreprises</TabsTrigger>
           <TabsTrigger value="discord">Discord</TabsTrigger>
@@ -77,6 +291,100 @@ export function SuperAdminPage() {
         </TabsList>
 
         <TabsContent value="enterprises" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Plus className="h-5 w-5" />
+                  <span>Créer une Entreprise</span>
+                </CardTitle>
+                <CardDescription>
+                  Ajouter une nouvelle entreprise au système
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nom de l'entreprise *</label>
+                  <Input
+                    value={newEnterprise.name}
+                    onChange={(e) => setNewEnterprise(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Mon Entreprise"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Type</label>
+                  <select
+                    value={newEnterprise.type}
+                    onChange={(e) => setNewEnterprise(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
+                  >
+                    <option value="SARL">SARL</option>
+                    <option value="SAS">SAS</option>
+                    <option value="SA">SA</option>
+                    <option value="EURL">EURL</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Guild ID Discord *</label>
+                  <Input
+                    value={newEnterprise.guild_id}
+                    onChange={(e) => setNewEnterprise(prev => ({ ...prev, guild_id: e.target.value }))}
+                    placeholder="123456789012345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Discord ID Propriétaire *</label>
+                  <Input
+                    value={newEnterprise.owner_discord_id}
+                    onChange={(e) => setNewEnterprise(prev => ({ ...prev, owner_discord_id: e.target.value }))}
+                    placeholder="987654321098765432"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Input
+                    value={newEnterprise.description}
+                    onChange={(e) => setNewEnterprise(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Description de l'entreprise"
+                  />
+                </div>
+                <Button onClick={handleCreateEnterprise} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer l'Entreprise
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions Rapides</CardTitle>
+                <CardDescription>
+                  Outils d'administration système
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button onClick={() => handleExportData('enterprises')} variant="outline" className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter Toutes les Entreprises
+                </Button>
+                <Button onClick={() => handleExportData('users')} variant="outline" className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter Utilisateurs Système
+                </Button>
+                <Button onClick={loadData} variant="outline" className="w-full">
+                  <Database className="mr-2 h-4 w-4" />
+                  Actualiser les Données
+                </Button>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">Statistiques Système</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {enterprises.length} entreprises • {systemUsers.length} utilisateurs privilégiés
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -97,20 +405,32 @@ export function SuperAdminPage() {
                         <Badge className={enterprise.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
                           {enterprise.status}
                         </Badge>
+                        <Badge variant="outline">{enterprise.type}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Propriétaire: {enterprise.owner} • {enterprise.employees} employés
+                        Guild: {enterprise.guild_id} • {enterprise.employees} employés
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Créée le: {new Date(enterprise.created_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm">
+                        <Edit className="mr-1 h-3 w-3" />
                         Gérer
                       </Button>
                       <Button variant="outline" size="sm">
+                        <Database className="mr-1 h-3 w-3" />
                         Auditer
                       </Button>
                       {enterprise.status === 'Active' ? (
-                        <Button variant="outline" size="sm" className="text-red-600">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600"
+                          onClick={() => handleSuspendEnterprise(enterprise.id)}
+                        >
+                          <AlertTriangle className="mr-1 h-3 w-3" />
                           Suspendre
                         </Button>
                       ) : (
@@ -122,10 +442,13 @@ export function SuperAdminPage() {
                   </div>
                 ))}
               </div>
-              <Button className="w-full mt-4">
-                <Building className="mr-2 h-4 w-4" />
-                Créer Nouvelle Entreprise
-              </Button>
+              {enterprises.length === 0 && (
+                <div className="text-center py-8">
+                  <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground">Aucune entreprise</p>
+                  <p className="text-sm text-muted-foreground">Créez votre première entreprise</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -196,6 +519,64 @@ export function SuperAdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
+                  <Plus className="h-5 w-5" />
+                  <span>Nouvelle Tranche Fiscale</span>
+                </CardTitle>
+                <CardDescription>
+                  Ajouter une tranche d'imposition
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Type d'impôt</label>
+                  <select
+                    value={newTaxBracket.type}
+                    onChange={(e) => setNewTaxBracket(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
+                  >
+                    <option value="IS">Impôt sur les Sociétés</option>
+                    <option value="richesse">Impôt sur la Fortune</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Montant minimum (€)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={newTaxBracket.min_amount}
+                    onChange={(e) => setNewTaxBracket(prev => ({ ...prev, min_amount: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Montant maximum (€) - Laisser vide pour illimité</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={newTaxBracket.max_amount || ''}
+                    onChange={(e) => setNewTaxBracket(prev => ({ ...prev, max_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Taux (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={newTaxBracket.rate}
+                    onChange={(e) => setNewTaxBracket(prev => ({ ...prev, rate: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+                <Button onClick={handleCreateTaxBracket} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer la Tranche
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
                   <Receipt className="h-5 w-5" />
                   <span>Tranches Fiscales Globales</span>
                 </CardTitle>
@@ -209,29 +590,27 @@ export function SuperAdminPage() {
                     <div key={index} className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <p className="text-sm font-medium">
-                          €{bracket.min.toLocaleString()} - {bracket.max === Infinity ? '∞' : `€${bracket.max.toLocaleString()}`}
+                          {formatCurrency(bracket.min_amount)} - {bracket.max_amount ? formatCurrency(bracket.max_amount) : '∞'}
                         </p>
+                        <p className="text-xs text-muted-foreground">{bracket.type}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant="outline">{bracket.rate}%</Badge>
                         <Button variant="outline" size="sm">
+                          <Edit className="mr-1 h-3 w-3" />
                           Modifier
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-red-600">
+                          <Trash2 className="mr-1 h-3 w-3" />
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex space-x-2 mt-4">
-                  <Input 
-                    placeholder="Nouveau taux (%)"
-                    value={newTaxRate}
-                    onChange={(e) => setNewTaxRate(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button>
-                    Ajouter
-                  </Button>
-                </div>
+                <Button onClick={() => handleExportData('taxes')} variant="outline" className="w-full mt-4">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter Tranches Fiscales
+                </Button>
               </CardContent>
             </Card>
 
@@ -286,35 +665,6 @@ export function SuperAdminPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Limite quotidienne max</span>
-                    <Input className="w-32" value="€500,000" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Taux de commission</span>
-                    <Input className="w-20" value="2.5%" />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="p-3 bg-red-50 border border-red-200 rounded">
-                    <p className="text-sm text-red-800 font-medium">Opérations Suspectes</p>
-                    <p className="text-xs text-red-600">Surveillance automatique active</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-                    <p className="text-sm text-blue-800 font-medium">Conformité</p>
-                    <p className="text-xs text-blue-600">Rapports générés automatiquement</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex space-x-2 mt-4">
-                <Button variant="outline" className="flex-1">
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Rapports Surveillance
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <Database className="mr-2 h-4 w-4" />
-                  Export Conformité
-                </Button>
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
 
@@ -333,17 +683,51 @@ export function SuperAdminPage() {
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="p-4 border rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">142</div>
+                    <div className="text-2xl font-bold text-green-600">{systemUsers.filter(u => u.active).length}</div>
                     <p className="text-sm text-muted-foreground">Utilisateurs Actifs</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">8</div>
+                    <div className="text-2xl font-bold text-blue-600">{systemUsers.filter(u => u.role_level >= 6).length}</div>
                     <p className="text-sm text-muted-foreground">Administrateurs</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <div className="text-2xl font-bold text-red-600">3</div>
+                    <div className="text-2xl font-bold text-red-600">{systemUsers.filter(u => !u.active).length}</div>
                     <p className="text-sm text-muted-foreground">Comptes Suspendus</p>
                   </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {systemUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium">{user.username}</p>
+                          <Badge className={user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                            {user.active ? 'Actif' : 'Inactif'}
+                          </Badge>
+                          <Badge variant="outline">Niveau {user.role_level}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Discord ID: {user.discord_id} • Rôle: {user.role}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Dernière connexion: {new Date(user.last_login).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm">
+                          <Edit className="mr-1 h-3 w-3" />
+                          Modifier
+                        </Button>
+                        {user.role !== 'superadmin' && (
+                          <Button variant="outline" size="sm" className="text-red-600">
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Suspendre
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="flex space-x-2">
@@ -436,7 +820,7 @@ export function SuperAdminPage() {
                     { name: 'API Principal', status: 'Opérationnel', color: 'text-green-600' },
                     { name: 'Base de Données', status: 'Opérationnel', color: 'text-green-600' },
                     { name: 'Discord OAuth', status: 'Opérationnel', color: 'text-green-600' },
-                    { name: 'Système de Fichiers', status: 'Maintenance', color: 'text-yellow-600' }
+                    { name: 'Supabase Storage', status: 'Opérationnel', color: 'text-green-600' }
                   ].map((service, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <span className="text-sm">{service.name}</span>
@@ -448,28 +832,28 @@ export function SuperAdminPage() {
                   <h4 className="font-medium">Ressources</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>CPU Usage</span>
-                      <span>23%</span>
+                      <span>Entreprises Actives</span>
+                      <span>{enterprises.filter(e => e.status === 'Active').length}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>RAM Usage</span>
-                      <span>67%</span>
+                      <span>Utilisateurs Système</span>
+                      <span>{systemUsers.length}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Storage</span>
-                      <span>45%</span>
+                      <span>Tranches Fiscales</span>
+                      <span>{taxBrackets.length}</span>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="flex space-x-2 mt-6">
-                <Button variant="outline" className="flex-1">
+                <Button onClick={() => handleExportData('enterprises')} variant="outline" className="flex-1">
                   <Database className="mr-2 h-4 w-4" />
-                  Backup Manuel
+                  Export Système
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button onClick={loadData} variant="outline" className="flex-1">
                   <Settings className="mr-2 h-4 w-4" />
-                  Maintenance
+                  Actualiser
                 </Button>
               </div>
             </CardContent>

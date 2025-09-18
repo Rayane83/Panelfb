@@ -388,6 +388,67 @@ export function useSupabase() {
     if (error) throw error
   }
 
+  // Fonctions pour l'administration système
+  const createTaxBracket = async (bracket: any) => {
+    const { data, error } = await supabase
+      .from('tax_brackets')
+      .insert(bracket)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  const updateTaxBracket = async (bracketId: string, updates: any) => {
+    const { data, error } = await supabase
+      .from('tax_brackets')
+      .update(updates)
+      .eq('id', bracketId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  const deleteTaxBracket = async (bracketId: string) => {
+    const { error } = await supabase
+      .from('tax_brackets')
+      .delete()
+      .eq('id', bracketId)
+
+    if (error) throw error
+  }
+
+  const updateEnterpriseStatus = async (enterpriseId: string, status: string) => {
+    const { data, error } = await supabase
+      .from('enterprises')
+      .update({ status })
+      .eq('id', enterpriseId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  const getSystemUsers = async () => {
+    // Cette fonction devrait récupérer les utilisateurs depuis une table users
+    // Pour l'instant, on retourne des données mockées
+    return [
+      {
+        id: '1',
+        discord_id: '462716512252329996',
+        username: 'Fondateur',
+        role: 'superadmin',
+        role_level: 7,
+        last_login: new Date().toISOString(),
+        active: true
+      }
+    ]
+  }
+
   return {
     isConnected,
     getAllEnterprises,
@@ -410,6 +471,11 @@ export function useSupabase() {
     getArchives,
     updateArchiveStatus,
     updateArchive,
-    deleteArchive
+    deleteArchive,
+    createTaxBracket,
+    updateTaxBracket,
+    deleteTaxBracket,
+    updateEnterpriseStatus,
+    getSystemUsers
   }
 }
