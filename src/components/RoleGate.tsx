@@ -23,7 +23,7 @@ export default function RoleGate({ children, requiredAccess }: RoleGateProps) {
             {user.allGuildRoles.map((guildRole, index) => (
               <div key={index}>
                 <strong>{guildRole.guildName}:</strong> {guildRole.userRole.roleName} 
-                ({guildRole.roles.length} rôles Discord)
+                (IDs: {guildRole.roles.join(', ')})
               </div>
             ))}
           </div>

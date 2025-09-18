@@ -138,7 +138,7 @@ export function Header() {
                               <div key={index} className="text-xs">
                                 <span className="font-medium">{guildRole.guildName}:</span>
                                 <span className="ml-1 text-muted-foreground">
-                                  {guildRole.userRole.roleName} ({guildRole.roles.length} rôles)
+                                  {guildRole.userRole.roleName} (IDs: {guildRole.roles.slice(0, 2).join(', ')}{guildRole.roles.length > 2 ? '...' : ''})
                                 </span>
                               </div>
                             ))}
