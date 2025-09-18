@@ -8,7 +8,7 @@ import { Header } from './components/layout/Header'
 import { Dashboard } from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
-import { SuperAdminPage } from './pages/SuperAdminPage'
+import SuperAdminPage from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
