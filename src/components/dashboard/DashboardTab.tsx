@@ -113,13 +113,38 @@ export function DashboardTab() {
         const totalBonuses = latestDotation?.total_bonuses || 0
 
         stats.push({
-  const maxEmployeeSalary = currentStats ? 5000 : 0
-  const maxBossSalary = currentStats ? 8000 : 0
-  const maxEmployeeBonus = currentStats ? 2500 : 0
-  const maxBossBonus = currentStats ? 4000 : 0
-  const taxRate = currentStats ? 7 : 0
-  const wealthTax = currentStats ? 2 : 0
+          id: enterprise.id,
+          name: enterprise.name,
+          employeeCount: employees.length,
+          totalCA,
+          totalSalaries,
+          totalBonuses,
           documentsCount: documents.length,
+          archivesCount: archives.length,
+          blanchimentCount: blanchimentOps.length,
+          lastActivity: enterprise.updated_at || enterprise.created_at,
+          maxEmployeeSalary: 5000,
+          maxBossSalary: 8000,
+          maxEmployeeBonus: 2500,
+          maxBossBonus: 4000,
+          taxRate: 7,
+          wealthTax: 2,
+          netProfit: totalCA - totalSalaries
+        })
+      }
+
+      setEnterpriseStats(stats)
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getAvatarUrl = () => {
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
