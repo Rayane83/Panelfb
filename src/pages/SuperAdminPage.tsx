@@ -665,6 +665,11 @@ export function SuperAdminPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Limite quotidienne max</span>
+                    <Input className="w-32" value="€50,000" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
 
