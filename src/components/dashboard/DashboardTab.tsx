@@ -17,7 +17,7 @@ import {
   DollarSign,
   FileText,
   Archive,
-  Shuffle
+  Shuffle,
   Calculator
 } from 'lucide-react'
 
