@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { usePermissions } from '../hooks/usePermissions'
+import { DashboardTab } from '../components/dashboard/DashboardTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -9,7 +11,7 @@ import { Label } from '../components/ui/label'
 import { Badge } from '../components/ui/badge'
 import { Textarea } from '../components/ui/textarea'
 import RoleGate from '../components/RoleGate'
-import { toast } from '../hooks/useToast'
+import { ConfigStaffTab } from '../components/dashboard/ConfigStaffTab'
 import { 
   Users,
   Calculator,
@@ -33,10 +35,12 @@ import {
   TrendingDown,
   PieChart
 } from 'lucide-react'
+import { formatCurrency } from '../lib/utils'
 
 // Composant Dotations avec zone collage et calculs
 const DotationsTab = () => {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const isStaff = user?.role === 'superviseur' || user?.role === 'superadmin'
   
   const [employees, setEmployees] = useState([
@@ -59,7 +63,7 @@ const DotationsTab = () => {
   // Zone de collage : Format "Nom;RUN;FACTURE;VENTE"
   const handlePasteData = () => {
     if (!pasteData.trim()) {
-      toast({ title: 'Erreur', description: 'Veuillez coller des données au format Nom;RUN;FACTURE;VENTE', variant: 'destructive' })
+      console.log('Veuillez coller des données au format Nom;RUN;FACTURE;VENTE')
       return
     }
     
@@ -98,20 +102,20 @@ const DotationsTab = () => {
       // Merge avec conservation de l'ordre
       setEmployees(prev => [...prev, ...newEmployees])
       setPasteData('')
-      toast({ title: 'Succès', description: `${newEmployees.length} employés ajoutés avec succès !` })
+      console.log(`${newEmployees.length} employés ajoutés avec succès !`)
     } else {
-      toast({ title: 'Erreur', description: 'Aucune donnée valide trouvée. Format attendu : Nom;RUN;FACTURE;VENTE', variant: 'destructive' })
+      console.log('Aucune donnée valide trouvée. Format attendu : Nom;RUN;FACTURE;VENTE')
     }
   }
 
   const handleSaveDotation = () => {
     // Enregistrer (dotation_reports + dotation_rows)
-    toast({ title: 'Succès', description: 'Dotation sauvegardée !' })
+    console.log('Dotation sauvegardée !')
   }
 
   const handleSendToArchives = () => {
     // Envoyer aux archives (payload complet, statut "En attente")
-    toast({ title: 'Succès', description: 'Dotation envoyée aux archives avec statut "En attente"' })
+    console.log('Dotation envoyée aux archives avec statut "En attente"')
   }
 
   return (
@@ -142,12 +146,14 @@ const DotationsTab = () => {
               Zone de collage données employés
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Format : <code>Nom;RUN;FACTURE;VENTE</code> (tab/virgule/; acceptés), ajoute/merge lignes, ordre conservé
+              Format : Nom;RUN;FACTURE;VENTE (tab/virgule/; acceptés), ajoute/merge lignes, ordre conservé
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder="Jean Dupont;125000;75000;50000&#10;Marie Martin;150000;80000;60000&#10;Pierre Moreau;200000;100000;75000"
+              placeholder="Jean Dupont;125000;75000;50000
+Marie Martin;150000;80000;60000
+Pierre Moreau;200000;100000;75000"
               value={pasteData}
               onChange={(e) => setPasteData(e.target.value)}
               rows={4}
@@ -191,12 +197,12 @@ const DotationsTab = () => {
                     <td className="p-4">
                       <Badge variant="outline">{emp.grade}</Badge>
                     </td>
-                    <td className="p-4">{emp.run.toLocaleString()}€</td>
-                    <td className="p-4">{emp.facture.toLocaleString()}€</td>
-                    <td className="p-4">{emp.vente.toLocaleString()}€</td>
-                    <td className="p-4 font-bold text-blue-600">{emp.caTotal.toLocaleString()}€</td>
-                    <td className="p-4 text-green-600">{emp.salaire.toLocaleString()}€</td>
-                    <td className="p-4 text-purple-600">{emp.prime.toLocaleString()}€</td>
+                    <td className="p-4">{formatCurrency(emp.run)}</td>
+                    <td className="p-4">{formatCurrency(emp.facture)}</td>
+                    <td className="p-4">{formatCurrency(emp.vente)}</td>
+                    <td className="p-4 font-bold text-blue-600">{formatCurrency(emp.caTotal)}</td>
+                    <td className="p-4 text-green-600">{formatCurrency(emp.salaire)}</td>
+                    <td className="p-4 text-purple-600">{formatCurrency(emp.prime)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -273,6 +279,7 @@ const DotationsTab = () => {
 // Composant Impôts avec calculs réels
 const ImpotsTab = () => {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const readonly = user?.role === 'superviseur' || user?.role === 'superadmin'
   
   const [impotData, setImpotData] = useState({
@@ -342,9 +349,9 @@ const ImpotsTab = () => {
     setLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      toast({ title: 'Succès', description: 'Déclaration d\'impôts sauvegardée' })
+      console.log('Déclaration d\'impôts sauvegardée')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la sauvegarde', variant: 'destructive' })
+      console.log('Erreur lors de la sauvegarde')
     } finally {
       setLoading(false)
     }
@@ -352,10 +359,20 @@ const ImpotsTab = () => {
   
   const handleExport = () => {
     try {
-      toast({ title: 'Succès', description: 'Export Excel réussi' })
+      const exportData = {
+        impotData,
+        incomeTax,
+        wealthTax,
+        totalTax,
+        taxBrackets,
+        wealthBrackets
+      }
+      
+      console.log('Export data:', exportData)
+      console.log('Export Excel réussi')
     } catch (error) {
       console.error('Erreur export:', error)
-      toast({ title: 'Erreur', description: 'Erreur lors de l\'export Excel', variant: 'destructive' })
+      console.log('Erreur lors de l\'export Excel')
     }
   }
   
@@ -365,7 +382,7 @@ const ImpotsTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Déclaration d'Impôts</h2>
           <p className="text-muted-foreground">
-            Période: {impotData.periode}
+            {user?.currentGuild?.name && `Guilde: ${user.currentGuild.name}`} - Période: {impotData.periode}
             {readonly && " (Lecture seule - Staff)"}
           </p>
         </div>
@@ -450,10 +467,10 @@ const ImpotsTab = () => {
               <div className="p-4 bg-primary/10 rounded-lg">
                 <Label className="text-sm text-muted-foreground">Total Impôts à Payer</Label>
                 <div className="text-3xl font-bold text-primary">
-                  €{totalTax.toLocaleString()}
+                  {formatCurrency(totalTax)}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Revenus: €{incomeTax.impot.toLocaleString()} + Patrimoine: €{wealthTax.impot.toLocaleString()}
+                  Revenus: {formatCurrency(incomeTax.impot)} + Patrimoine: {formatCurrency(wealthTax.impot)}
                 </div>
               </div>
             </div>
@@ -471,7 +488,7 @@ const ImpotsTab = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Base imposable:</span>
-                <span>€{Math.max(0, impotData.revenus_imposables - impotData.abattements).toLocaleString()}</span>
+                <span>{formatCurrency(Math.max(0, impotData.revenus_imposables - impotData.abattements))}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tranche:</span>
@@ -483,7 +500,7 @@ const ImpotsTab = () => {
               </div>
               <div className="flex justify-between font-bold border-t pt-2">
                 <span>Impôt revenus:</span>
-                <span>€{incomeTax.impot.toLocaleString()}</span>
+                <span>{formatCurrency(incomeTax.impot)}</span>
               </div>
             </div>
           </CardContent>
@@ -497,7 +514,7 @@ const ImpotsTab = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Patrimoine total:</span>
-                <span>€{impotData.patrimoine.toLocaleString()}</span>
+                <span>{formatCurrency(impotData.patrimoine)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tranche:</span>
@@ -509,7 +526,7 @@ const ImpotsTab = () => {
               </div>
               <div className="flex justify-between font-bold border-t pt-2">
                 <span>Impôt patrimoine:</span>
-                <span>€{wealthTax.impot.toLocaleString()}</span>
+                <span>{formatCurrency(wealthTax.impot)}</span>
               </div>
             </div>
           </CardContent>
@@ -537,7 +554,7 @@ const ImpotsTab = () => {
                     {taxBrackets.map((bracket, index) => (
                       <tr key={index} className="border-b">
                         <td className="p-2">
-                          {bracket.min.toLocaleString()} - {bracket.max ? bracket.max.toLocaleString() : '∞'}
+                          {formatCurrency(bracket.min)} - {bracket.max ? formatCurrency(bracket.max) : '∞'}
                         </td>
                         <td className="p-2">{(bracket.taux * 100).toFixed(1)}%</td>
                       </tr>
@@ -561,7 +578,7 @@ const ImpotsTab = () => {
                     {wealthBrackets.map((bracket, index) => (
                       <tr key={index} className="border-b">
                         <td className="p-2">
-                          {bracket.min.toLocaleString()} - {bracket.max ? bracket.max.toLocaleString() : '∞'}
+                          {formatCurrency(bracket.min)} - {bracket.max ? formatCurrency(bracket.max) : '∞'}
                         </td>
                         <td className="p-2">{(bracket.taux * 100).toFixed(1)}%</td>
                       </tr>
@@ -590,6 +607,7 @@ const ImpotsTab = () => {
 // Composant Factures/Diplômes complet avec upload
 const FacturesDiplomesTab = () => {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const readonly = user?.role === 'superviseur' || user?.role === 'superadmin'
   
   const [documents, setDocuments] = useState([
@@ -661,7 +679,7 @@ const FacturesDiplomesTab = () => {
   
   const handleFileUpload = async (files: FileList) => {
     if (readonly) {
-      toast({ title: 'Erreur', description: 'Action non autorisée en mode lecture seule', variant: 'destructive' })
+      console.log('Action non autorisée en mode lecture seule')
       return
     }
     
@@ -680,7 +698,7 @@ const FacturesDiplomesTab = () => {
     }
     
     if (errors.length > 0) {
-      toast({ title: 'Erreur', description: `Erreurs: ${errors.join(', ')}`, variant: 'destructive' })
+      console.log(`Erreurs: ${errors.join(', ')}`)
     }
     
     if (validFiles.length === 0) {
@@ -707,14 +725,14 @@ const FacturesDiplomesTab = () => {
         }
         
         setDocuments(prev => [newDoc, ...prev])
-        toast({ title: 'Succès', description: `${file.name} téléchargé avec succès` })
+        console.log(`${file.name} téléchargé avec succès`)
       }
       
       if (validFiles.length > 1) {
-        toast({ title: 'Succès', description: `${validFiles.length} documents téléchargés au total` })
+        console.log(`${validFiles.length} documents téléchargés au total`)
       }
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors du téléchargement', variant: 'destructive' })
+      console.log('Erreur lors du téléchargement')
     } finally {
       setUploading(false)
     }
@@ -737,7 +755,7 @@ const FacturesDiplomesTab = () => {
   
   const handleDelete = async (id: number) => {
     if (readonly) {
-      toast({ title: 'Erreur', description: 'Action non autorisée en mode lecture seule', variant: 'destructive' })
+      console.log('Action non autorisée en mode lecture seule')
       return
     }
     
@@ -752,9 +770,9 @@ const FacturesDiplomesTab = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500))
       setDocuments(prev => prev.filter(d => d.id !== id))
-      toast({ title: 'Succès', description: `${doc.name} supprimé` })
+      console.log(`${doc.name} supprimé`)
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la suppression', variant: 'destructive' })
+      console.log('Erreur lors de la suppression')
     } finally {
       setLoading(false)
     }
@@ -762,7 +780,7 @@ const FacturesDiplomesTab = () => {
   
   const handlePreview = (doc: any) => {
     setPreviewDoc(doc)
-    toast({ title: 'Info', description: `Aperçu de ${doc.name}` })
+    console.log(`Aperçu de ${doc.name}`)
   }
   
   const handleDownload = (doc: any) => {
@@ -770,7 +788,7 @@ const FacturesDiplomesTab = () => {
     link.href = doc.url
     link.download = doc.name
     link.click()
-    toast({ title: 'Succès', description: `Téléchargement de ${doc.name}` })
+    console.log(`Téléchargement de ${doc.name}`)
   }
   
   const getTypeColor = (type: string) => {
@@ -796,7 +814,7 @@ const FacturesDiplomesTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Factures / Diplômes</h2>
           <p className="text-muted-foreground">
-            Gestion des documents
+            {user?.currentGuild?.name && `Guilde: ${user.currentGuild.name}`} - Gestion des documents
             {readonly && " (Lecture seule - Staff)"}
           </p>
         </div>
@@ -835,7 +853,7 @@ const FacturesDiplomesTab = () => {
                 Glissez vos fichiers ici ou cliquez pour parcourir
               </h3>
               <p className="text-muted-foreground mb-4">
-                Formats acceptés: PDF, DOC, DOCX, JPG, PNG, GIF (Max {formatFileSize(maxFileSize)})
+                Formats acceptés: PDF, DOC, DOCX, JPG, PNG, GIF (Max 10MB)
               </p>
               <div className="flex items-center justify-center space-x-4">
                 <Label htmlFor="file-upload" className="cursor-pointer">
@@ -985,8 +1003,9 @@ const FacturesDiplomesTab = () => {
 // Composant Blanchiment complet avec toggle et CRUD 
 const BlanchimentTab = () => {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const readonly = user?.role === 'superviseur' || user?.role === 'superadmin'
-  const canManageSettings = user?.role === 'superviseur' || user?.role === 'superadmin' // Seul le staff peut activer/désactiver
+  const canManageSettings = hasPermission('config_staff') // Seul le staff peut activer/désactiver
   
   const [blanchimentEnabled, setBlanchimentEnabled] = useState(true)
   const [useGlobal, setUseGlobal] = useState(true)
@@ -1082,7 +1101,7 @@ const BlanchimentTab = () => {
   // Ajout d'une nouvelle ligne
   const addNewRow = () => {
     if (!newRow.groupe || !newRow.employe || !newRow.somme) {
-      toast({ title: 'Erreur', description: 'Veuillez remplir les champs obligatoires (Groupe, Employé, Somme)', variant: 'destructive' })
+      console.log('Veuillez remplir les champs obligatoires (Groupe, Employé, Somme)')
       return
     }
     
@@ -1107,7 +1126,7 @@ const BlanchimentTab = () => {
       recep: '',
       somme: 0
     })
-    toast({ title: 'Succès', description: 'Nouvelle opération ajoutée' })
+    console.log('Nouvelle opération ajoutée')
   }
   
   // Suppression d'une ligne
@@ -1116,7 +1135,7 @@ const BlanchimentTab = () => {
       return
     }
     setRows(prev => prev.filter(row => row.id !== id))
-    toast({ title: 'Succès', description: 'Opération supprimée' })
+    console.log('Opération supprimée')
   }
   
   // Sauvegarde
@@ -1124,9 +1143,9 @@ const BlanchimentTab = () => {
     setLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      toast({ title: 'Succès', description: 'Configuration blanchiment sauvegardée' })
+      console.log('Configuration blanchiment sauvegardée')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la sauvegarde', variant: 'destructive' })
+      console.log('Erreur lors de la sauvegarde')
     } finally {
       setLoading(false)
     }
@@ -1135,17 +1154,29 @@ const BlanchimentTab = () => {
   // Export Excel
   const handleExportExcel = () => {
     try {
-      toast({ title: 'Succès', description: 'Export Excel réussi' })
+      const exportData = {
+        settings: currentSettings,
+        rows,
+        stats: {
+          total: rows.length,
+          enCours: rows.filter(r => r.statut === 'En cours').length,
+          termine: rows.filter(r => r.statut === 'Terminé').length,
+          sommeTotal: rows.reduce((sum, r) => sum + (r.somme || 0), 0)
+        }
+      }
+      
+      console.log('Export data:', exportData)
+      console.log('Export Excel réussi')
     } catch (error) {
       console.error('Erreur export:', error)
-      toast({ title: 'Erreur', description: 'Erreur lors de l\'export Excel', variant: 'destructive' })
+      console.log('Erreur lors de l\'export Excel')
     }
   }
   
   // Traitement données collées
   const handlePasteData = () => {
     if (!pasteData.trim()) {
-      toast({ title: 'Erreur', description: 'Aucune donnée à traiter', variant: 'destructive' })
+      console.log('Aucune donnée à traiter')
       return
     }
     
@@ -1179,13 +1210,13 @@ const BlanchimentTab = () => {
         setRows(prev => [...newRows, ...prev])
         setPasteData('')
         setShowPasteArea(false)
-        toast({ title: 'Succès', description: `${newRows.length} opération(s) ajoutée(s) depuis les données collées` })
+        console.log(`${newRows.length} opération(s) ajoutée(s) depuis les données collées`)
       } else {
-        toast({ title: 'Erreur', description: 'Format invalide. Utilisez: Date;Groupe;Employé;Donneur;Recep;Somme', variant: 'destructive' })
+        console.log('Format invalide. Utilisez: Date;Groupe;Employé;Donneur;Recep;Somme')
       }
     } catch (error) {
       console.error('Erreur traitement données:', error)
-      toast({ title: 'Erreur', description: 'Erreur lors du traitement des données', variant: 'destructive' })
+      console.log('Erreur lors du traitement des données')
     }
   }
   
@@ -1214,7 +1245,7 @@ const BlanchimentTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Gestion du Blanchiment</h2>
           <p className="text-muted-foreground">
-            Suivi des opérations
+            {user?.currentGuild?.name && `Guilde: ${user.currentGuild.name}`} - Suivi des opérations
             {readonly && " (Lecture seule - Staff)"}
           </p>
         </div>
@@ -1346,11 +1377,11 @@ const BlanchimentTab = () => {
                       </div>
                       <div className="flex justify-between">
                         <span>Part entreprise ({currentSettings.perc_entreprise}%):</span>
-                        <span className="font-medium">€{(100000 * currentSettings.perc_entreprise / 100).toLocaleString()}</span>
+                        <span className="font-medium">{formatCurrency(100000 * currentSettings.perc_entreprise / 100)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Part groupe ({currentSettings.perc_groupe}%):</span>
-                        <span className="font-medium">€{(100000 * currentSettings.perc_groupe / 100).toLocaleString()}</span>
+                        <span className="font-medium">{formatCurrency(100000 * currentSettings.perc_groupe / 100)}</span>
                       </div>
                     </div>
                   </div>
@@ -1387,7 +1418,7 @@ const BlanchimentTab = () => {
             </Card>
             <Card>
               <CardContent className="p-6 text-center">
-                <div className="text-2xl font-bold">€{stats.sommeTotal.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrency(stats.sommeTotal)}</div>
                 <div className="text-sm text-muted-foreground">Somme totale</div>
               </CardContent>
             </Card>
@@ -1685,8 +1716,9 @@ Exemple:
 // Composant Archives complet avec recherche et CRUD
 const ArchivesTab = () => {
   const { user } = useAuth()
-  const isStaff = user?.role === 'superviseur' || user?.role === 'superadmin'
-  const isPatronCoPatron = ['patron', 'co_patron'].includes(user?.role || '')
+  const { hasPermission } = usePermissions()
+  const isStaff = hasPermission('config_staff')
+  const isPatronCoPatron = user?.role === 'patron' || user?.role === 'co_patron'
   
   const [archives, setArchives] = useState([
     {
@@ -1806,7 +1838,7 @@ const ArchivesTab = () => {
   
   const handleEdit = (archive: any) => {
     if (!canEdit(archive)) {
-      toast({ title: 'Erreur', description: 'Vous n\'avez pas les permissions pour éditer cette archive', variant: 'destructive' })
+      console.log('Vous n\'avez pas les permissions pour éditer cette archive')
       return
     }
     setEditingArchive({ ...archive })
@@ -1822,9 +1854,9 @@ const ArchivesTab = () => {
       ))
       
       setEditingArchive(null)
-      toast({ title: 'Succès', description: 'Archive modifiée avec succès' })
+      console.log('Archive modifiée avec succès')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la modification', variant: 'destructive' })
+      console.log('Erreur lors de la modification')
     } finally {
       setLoading(false)
     }
@@ -1832,7 +1864,7 @@ const ArchivesTab = () => {
   
   const handleValidate = async (id: string) => {
     if (!isStaff) {
-      toast({ title: 'Erreur', description: 'Seul le staff peut valider les archives', variant: 'destructive' })
+      console.log('Seul le staff peut valider les archives')
       return
     }
     
@@ -1844,9 +1876,9 @@ const ArchivesTab = () => {
         archive.id === id ? { ...archive, statut: 'Validé' } : archive
       ))
       
-      toast({ title: 'Succès', description: 'Archive validée' })
+      console.log('Archive validée')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la validation', variant: 'destructive' })
+      console.log('Erreur lors de la validation')
     } finally {
       setLoading(false)
     }
@@ -1854,7 +1886,7 @@ const ArchivesTab = () => {
   
   const handleReject = async (id: string) => {
     if (!isStaff) {
-      toast({ title: 'Erreur', description: 'Seul le staff peut refuser les archives', variant: 'destructive' })
+      console.log('Seul le staff peut refuser les archives')
       return
     }
     
@@ -1866,9 +1898,9 @@ const ArchivesTab = () => {
         archive.id === id ? { ...archive, statut: 'Refusé' } : archive
       ))
       
-      toast({ title: 'Succès', description: 'Archive refusée' })
+      console.log('Archive refusée')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors du refus', variant: 'destructive' })
+      console.log('Erreur lors du refus')
     } finally {
       setLoading(false)
     }
@@ -1876,7 +1908,7 @@ const ArchivesTab = () => {
   
   const handleDelete = async (id: string) => {
     if (!isStaff) {
-      toast({ title: 'Erreur', description: 'Seul le staff peut supprimer les archives', variant: 'destructive' })
+      console.log('Seul le staff peut supprimer les archives')
       return
     }
     
@@ -1890,9 +1922,9 @@ const ArchivesTab = () => {
       await new Promise(resolve => setTimeout(resolve, 500))
       
       setArchives(prev => prev.filter(archive => archive.id !== id))
-      toast({ title: 'Succès', description: 'Archive supprimée' })
+      console.log('Archive supprimée')
     } catch (error) {
-      toast({ title: 'Erreur', description: 'Erreur lors de la suppression', variant: 'destructive' })
+      console.log('Erreur lors de la suppression')
     } finally {
       setLoading(false)
     }
@@ -1900,11 +1932,62 @@ const ArchivesTab = () => {
   
   const handleExportExcel = () => {
     try {
-      toast({ title: 'Succès', description: 'Export Excel réussi' })
+      const exportData = filteredArchives.map(archive => ({
+        Type: archive.type,
+        Date: archive.date,
+        Montant: archive.montant,
+        Statut: archive.statut,
+        Entreprise: archive.entreprise_key,
+        Description: archive.payload?.description || ''
+      }))
+      
+      console.log('Export data:', exportData)
+      
+      const fileName = user?.currentGuild?.name
+        ? `archives_${user.currentGuild.name}_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `archives_toutes_${new Date().toISOString().split('T')[0]}.xlsx`
+        
+      console.log(`Export Excel réussi : ${fileName}`)
     } catch (error) {
       console.error('Erreur export:', error)
-      toast({ title: 'Erreur', description: 'Erreur lors de l\'export Excel', variant: 'destructive' })
+      console.log('Erreur lors de l\'export Excel')
     }
+  }
+  
+  const handleImportTemplate = (file: File) => {
+    if (!file) return
+    
+    if (!isStaff) {
+      console.log('Seul le staff peut importer des templates')
+      return
+    }
+    
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        console.log('Template import:', e.target.result)
+        
+        // Récupération des données
+        const data = []
+        
+        if (data.length > 0) {
+          // Exemple de mapping basé sur la première ligne
+          const headers = Object.keys(data[0])
+          console.log('Headers détectés:', headers)
+          
+          console.log(`Template importé avec succès. ${data.length} ligne(s) détectée(s).`)
+          
+          // Ici on pourrait traiter et ajouter les données aux archives
+          // Pour l'instant, on affiche juste un succès
+        } else {
+          console.log('Fichier vide ou format non reconnu')
+        }
+      } catch (error) {
+        console.error('Erreur import:', error)
+        console.log('Erreur lors de l\'import du template')
+      }
+    }
+    reader.readAsBinaryString(file)
   }
   
   const getStatutColor = (statut: string) => {
@@ -1941,6 +2024,7 @@ const ArchivesTab = () => {
           <h2 className="text-2xl font-bold">Gestion des Archives</h2>
           <p className="text-muted-foreground">
             Consultez et gérez les archives des dotations, impôts et blanchiment
+            {user?.currentGuild?.name && ` - Guilde: ${user.currentGuild.name}`}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -1998,7 +2082,7 @@ const ArchivesTab = () => {
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold">€{stats.montantTotal.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.montantTotal)}</div>
             <div className="text-sm text-muted-foreground">Montant total</div>
           </CardContent>
         </Card>
@@ -2146,7 +2230,7 @@ const ArchivesTab = () => {
                         {new Date(archive.date).toLocaleDateString('fr-FR')}
                       </td>
                       <td className="p-3 font-medium">
-                        €{archive.montant.toLocaleString()}
+                        {formatCurrency(archive.montant)}
                       </td>
                       <td className="p-3">
                         <Badge className={getStatutColor(archive.statut)}>
@@ -2249,7 +2333,7 @@ const ArchivesTab = () => {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Montant</Label>
-                  <p>€{selectedArchive.montant.toLocaleString()}</p>
+                  <p>{formatCurrency(selectedArchive.montant)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Statut</Label>
@@ -2375,6 +2459,7 @@ const SimpleTab = ({ title, description, icon: Icon, specs }: { title: string, d
 
 const Dashboard = () => {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
   
@@ -2397,6 +2482,8 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header is already included in App.tsx */}
+      
       <div className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-7">
@@ -2406,7 +2493,7 @@ const Dashboard = () => {
             <TabsTrigger value="docs">Factures/Diplômes</TabsTrigger>
             <TabsTrigger value="blanchiment">Blanchiment</TabsTrigger>
             <TabsTrigger value="archives">Archives</TabsTrigger>
-            {['superviseur', 'superadmin'].includes(user?.role || '') && (
+            {hasPermission('config_staff') && (
               <TabsTrigger value="config">Config</TabsTrigger>
             )}
           </TabsList>
@@ -2421,28 +2508,19 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <SimpleTab 
-              title="Dashboard Summary" 
-              description="Vue d'ensemble des données" 
-              icon={PieChart}
-              specs={[
-                "Affichage des métriques principales",
-                "Graphiques et statistiques",
-                "Résumé des activités récentes"
-              ]}
-            />
+            <DashboardTab />
           </TabsContent>
 
           {/* 2) Dotations — Route : /#dotations */}
           <TabsContent value="dotations" className="space-y-6">
-            <RoleGate requiredAccess="canAccessDotation">
+            <RoleGate requiredAccess="dotations">
               <DotationsTab />
             </RoleGate>
           </TabsContent>
 
           {/* 3) Impôts — Route : /#impots */}
           <TabsContent value="impots" className="space-y-6">
-            <RoleGate requiredAccess="canAccessImpot">
+            <RoleGate requiredAccess="impots">
               <ImpotsTab />
             </RoleGate>
           </TabsContent>
@@ -2454,7 +2532,7 @@ const Dashboard = () => {
 
           {/* 5) Blanchiment — Route : /#blanchiment */}
           <TabsContent value="blanchiment" className="space-y-6">
-            <RoleGate requiredAccess="canAccessBlanchiment">
+            <RoleGate requiredAccess="blanchiment">
               <BlanchimentTab />
             </RoleGate>
           </TabsContent>
@@ -2466,17 +2544,8 @@ const Dashboard = () => {
 
           {/* 7) Config (Staff) — Route : /#config */}
           <TabsContent value="config" className="space-y-6">
-            <RoleGate requiredAccess="canAccessStaffConfig">
-              <SimpleTab 
-                title="Configuration Staff" 
-                description="Paramètres système avancés" 
-                icon={Settings}
-                specs={[
-                  "Gestion des paramètres globaux",
-                  "Configuration des entreprises",
-                  "Administration des utilisateurs"
-                ]}
-              />
+            <RoleGate requiredAccess="config_staff">
+              <ConfigStaffTab />
             </RoleGate>
           </TabsContent>
         </Tabs>
