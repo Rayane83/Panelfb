@@ -637,22 +637,368 @@ export function useSupabase() {
 
   const getSystemUsers = async () => {
     try {
-      // Cette fonction devrait récupérer les utilisateurs depuis une table users
-      // Pour l'instant, on retourne des données mockées
-      return [
-        {
-          id: '1',
-          discord_id: '462716512252329996',
-          username: 'Fondateur',
-          role: 'superadmin',
-          role_level: 7,
-          last_login: new Date().toISOString(),
-          active: true
-        }
-      ]
+      const { data, error } = await supabase
+        .from('system_users')
+        .select('*')
+        .order('last_login', { ascending: false })
+
+      if (error) throw error
+      return data || []
     } catch (error) {
       console.error('Error fetching system users:', error)
       return []
+    }
+  }
+
+  // Nouvelles fonctions pour les qualifications
+  const getQualifications = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('qualifications')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching qualifications:', error)
+      return []
+    }
+  }
+
+  const createQualification = async (qualificationData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('qualifications')
+        .insert(qualificationData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating qualification:', error)
+      throw error
+    }
+  }
+
+  const deleteQualification = async (qualificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('qualifications')
+        .delete()
+        .eq('id', qualificationId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting qualification:', error)
+      throw error
+    }
+  }
+
+  const getEmployeeQualifications = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('employee_qualifications')
+        .select(`
+          *,
+          qualifications (*)
+        `)
+        .eq('enterprise_id', enterpriseId)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching employee qualifications:', error)
+      return []
+    }
+  }
+
+  const assignQualification = async (assignmentData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('employee_qualifications')
+        .insert(assignmentData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error assigning qualification:', error)
+      throw error
+    }
+  }
+
+  const revokeQualification = async (employeeId: string, qualificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('employee_qualifications')
+        .update({ status: 'revoked' })
+        .eq('employee_id', employeeId)
+        .eq('qualification_id', qualificationId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error revoking qualification:', error)
+      throw error
+    }
+  }
+
+  // Fonctions pour la comptabilité
+  const getTransactions = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+      return []
+    }
+  }
+
+  const createTransaction = async (transactionData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(transactionData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating transaction:', error)
+      throw error
+    }
+  }
+
+  const updateTransaction = async (transactionId: string, updates: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(updates)
+        .eq('id', transactionId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+      throw error
+    }
+  }
+
+  const deleteTransaction = async (transactionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting transaction:', error)
+      throw error
+    }
+  }
+
+  const getAccountingPeriods = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('accounting_periods')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching accounting periods:', error)
+      return []
+    }
+  }
+
+  const createAccountingPeriod = async (periodData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('accounting_periods')
+        .insert(periodData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating accounting period:', error)
+      throw error
+    }
+  }
+
+  // Fonctions pour les périodes de paie
+  const getPayrollPeriods = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('payroll_periods')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching payroll periods:', error)
+      return []
+    }
+  }
+
+  const createPayrollPeriod = async (payrollData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('payroll_periods')
+        .insert(payrollData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating payroll period:', error)
+      throw error
+    }
+  }
+
+  // Fonctions pour les simulations fiscales
+  const getTaxSimulations = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tax_simulations')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax simulations:', error)
+      return []
+    }
+  }
+
+  // Fonctions pour les lignes de dotation
+  const getDotationLines = async (dotationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('dotation_lines')
+        .select('*')
+        .eq('dotation_id', dotationId)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching dotation lines:', error)
+      return []
+    }
+  }
+
+  const getDotationExpenses = async (dotationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('dotation_id', dotationId)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching dotation expenses:', error)
+      return []
+    }
+  }
+
+  const getDotationWithdrawals = async (dotationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('dotation_id', dotationId)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching dotation withdrawals:', error)
+      return []
+    }
+  }
+
+  const updateGrade = async (gradeId: string, updates: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .update(updates)
+        .eq('id', gradeId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating grade:', error)
+      throw error
+    }
+  }
+
+  const getEnterprise = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('enterprises')
+        .select('*')
+        .eq('id', enterpriseId)
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching enterprise:', error)
+      return null
+    }
+  }
+
+  const updateEnterpriseSettings = async (enterpriseId: string, settings: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('enterprises')
+        .update({ settings })
+        .eq('id', enterpriseId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating enterprise settings:', error)
+      throw error
+    }
+  }
+
+  const getDocumentUrl = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(filePath, 3600) // 1 heure
+
+      if (error) throw error
+      return data.signedUrl
+    } catch (error) {
+      console.error('Error getting document URL:', error)
+      throw error
     }
   }
 
@@ -687,6 +1033,28 @@ export function useSupabase() {
     updateTaxBracket,
     deleteTaxBracket,
     updateEnterpriseBlanchimentStatus,
-    getSystemUsers
+    getSystemUsers,
+    getQualifications,
+    createQualification,
+    deleteQualification,
+    getEmployeeQualifications,
+    assignQualification,
+    revokeQualification,
+    getTransactions,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+    getAccountingPeriods,
+    createAccountingPeriod,
+    getPayrollPeriods,
+    createPayrollPeriod,
+    getTaxSimulations,
+    getDotationLines,
+    getDotationExpenses,
+    getDotationWithdrawals,
+    updateGrade,
+    getEnterprise,
+    updateEnterpriseSettings,
+    getDocumentUrl
   }
 }

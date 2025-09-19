@@ -4,17 +4,23 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Switch } from '../ui/switch'
-import { useState } from 'react'
+import { Textarea } from '../ui/textarea'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
-import { AlertTriangle, Shuffle, TrendingUp, Clock, Save, Download, Plus, Trash2 } from 'lucide-react'
+import { useSupabase } from '../../hooks/useSupabase'
+import { AlertTriangle, Shuffle, TrendingUp, Clock, Save, Download, Plus, Trash2, Upload, RefreshCw, Archive, Eye } from 'lucide-react'
 import { formatCurrency } from '../../lib/utils'
+import { parseBlanchimentData, exportToExcel } from '../../utils/csvParser'
 
 interface BlanchimentConfig {
   enabled: boolean
   useGlobal: boolean
   percEntreprise: number
   percGroupe: number
+  threshold: number
+  maxAmount: number
+  cooldownHours: number
 }
 
 interface BlanchimentLine {
@@ -37,48 +43,70 @@ interface BlanchimentLine {
 export function BlanchimentTab() {
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
+  const supabaseHooks = useSupabase()
+  
   const [config, setConfig] = useState<BlanchimentConfig>({
     enabled: true,
     useGlobal: false,
     percEntreprise: 15,
-    percGroupe: 10
+    percGroupe: 10,
+    threshold: 1000,
+    maxAmount: 100000,
+    cooldownHours: 24
   })
-  const [lines, setLines] = useState<BlanchimentLine[]>([
-    {
-      id: '1',
-      statut: 'En cours',
-      dateRecu: '2024-01-15',
-      dateRendu: '2024-01-20',
-      duree: 5,
-      groupe: 'Groupe A',
-      employe: 'Jean Dupont',
-      donneur: 'Client X',
-      recep: 'Destinataire Y',
-      somme: 25000,
-      percEntreprise: 15,
-      percGroupe: 10
-    },
-    {
-      id: '2',
-      statut: 'Terminé',
-      dateRecu: '2024-01-10',
-      dateRendu: '2024-01-18',
-      duree: 8,
-      groupe: 'Groupe B',
-      employe: 'Marie Martin',
-      donneur: 'Client Z',
-      recep: 'Destinataire W',
-      somme: 45000,
-      percEntreprise: 15,
-      percGroupe: 10
-    }
-  ])
+  const [lines, setLines] = useState<BlanchimentLine[]>([])
+  const [pasteData, setPasteData] = useState('')
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', message: string} | null>(null)
   const [errors, setErrors] = useState<{[key: string]: string}>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedOperation, setSelectedOperation] = useState<BlanchimentLine | null>(null)
 
   const canEdit = hasPermission('blanchiment') && ['patron', 'co_patron'].includes(user?.role || '')
-  const canExport = hasPermission('blanchiment') && ['patron', 'co_patron', 'staff'].includes(user?.role || '')
+  const canExport = hasPermission('blanchiment') && ['patron', 'co_patron', 'superviseur'].includes(user?.role || '')
   const canView = hasPermission('blanchiment')
+  const canManageConfig = hasPermission('blanchiment') && ['patron'].includes(user?.role || '')
+
+  useEffect(() => {
+    loadBlanchimentData()
+  }, [])
+
+  const loadBlanchimentData = async () => {
+    if (!user?.enterprises?.[0]?.id) return
+    
+    try {
+      setIsLoading(true)
+      const enterpriseId = user.enterprises[0].id
+      
+      // Charger les opérations
+      const operations = await supabaseHooks.getBlanchimentOperations(enterpriseId)
+      const formattedLines = operations.map((op: any) => ({
+        id: op.id,
+        statut: op.status,
+        dateRecu: op.date_received,
+        dateRendu: op.date_returned || '',
+        duree: op.duration_days || 0,
+        groupe: op.groupe || '',
+        employe: op.employee || '',
+        donneur: op.donneur || '',
+        recep: op.recep || '',
+        somme: op.amount,
+        percEntreprise: op.perc_entreprise,
+        percGroupe: op.perc_groupe
+      }))
+      setLines(formattedLines)
+      
+      // Charger la configuration depuis les settings de l'entreprise
+      const enterprise = await supabaseHooks.getEnterprise(enterpriseId)
+      if (enterprise?.settings?.blanchiment) {
+        setConfig(enterprise.settings.blanchiment)
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error)
+      showToast('error', 'Erreur lors du chargement des données')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
     setToast({ type, message })
@@ -105,11 +133,10 @@ export function BlanchimentTab() {
   }
 
   const handleConfigChange = (field: keyof BlanchimentConfig, value: any) => {
-    if (!canEdit) return
+    if (!canManageConfig) return
 
     const newConfig = { ...config, [field]: value }
     
-    // Validation des pourcentages
     if ((field === 'percEntreprise' || field === 'percGroupe') && !validatePercentage(value)) {
       setErrors(prev => ({ ...prev, [field]: 'Le pourcentage doit être entre 0 et 100' }))
       return
@@ -127,11 +154,9 @@ export function BlanchimentTab() {
       if (line.id === lineId) {
         const updatedLine = { ...line, [field]: value }
         
-        // Recalculer la durée si les dates changent
         if (field === 'dateRecu' || field === 'dateRendu') {
           updatedLine.duree = calculateDuration(updatedLine.dateRecu, updatedLine.dateRendu)
           
-          // Validation des dates
           if (field === 'dateRendu' && updatedLine.dateRecu && updatedLine.dateRendu) {
             const recu = new Date(updatedLine.dateRecu)
             const rendu = new Date(updatedLine.dateRendu)
@@ -143,14 +168,12 @@ export function BlanchimentTab() {
           }
         }
         
-        // Validation des montants
         if (field === 'somme' && (isNaN(value) || value < 0)) {
           setErrors(prev => ({ ...prev, [`${lineId}_somme`]: 'Le montant doit être un nombre positif' }))
         } else if (field === 'somme') {
           setErrors(prev => ({ ...prev, [`${lineId}_somme`]: '' }))
         }
         
-        // Mettre à jour les pourcentages selon la config
         if (!config.useGlobal) {
           updatedLine.percEntreprise = config.percEntreprise
           updatedLine.percGroupe = config.percGroupe
@@ -160,6 +183,19 @@ export function BlanchimentTab() {
       }
       return line
     }))
+  }
+
+  const handlePasteData = () => {
+    if (!canEdit || !pasteData.trim()) return
+
+    try {
+      const parsedData = parseBlanchimentData(pasteData)
+      setLines(prev => [...parsedData, ...prev])
+      setPasteData('')
+      showToast('success', `${parsedData.length} opération(s) importée(s)`)
+    } catch (error) {
+      showToast('error', 'Erreur lors de l\'importation des données')
+    }
   }
 
   const addNewLine = () => {
@@ -191,58 +227,104 @@ export function BlanchimentTab() {
     if (!line) return
 
     if (line.isTemporary) {
-      // Suppression immédiate pour les lignes temporaires
       setLines(prev => prev.filter(l => l.id !== lineId))
     } else {
-      // Marquer pour suppression pour les lignes persistées
       setLines(prev => prev.map(l => 
         l.id === lineId ? { ...l, markedForDeletion: true } : l
       ))
     }
   }
 
-  const handleSave = () => {
-    if (!canEdit) return
+  const handleSave = async () => {
+    if (!canEdit || !user?.enterprises?.[0]?.id) return
 
-    // Validation globale
     const hasErrors = Object.values(errors).some(error => error !== '')
     if (hasErrors) {
       showToast('error', 'Veuillez corriger les erreurs avant de sauvegarder')
       return
     }
 
-    // Sauvegarder via Supabase
-    const enterpriseId = user?.enterprises?.[0]?.id || user?.currentGuild?.id
-    if (enterpriseId) {
-      supabaseHooks.saveBlanchimentOperations(enterpriseId, lines)
-        .then(() => {
-          const linesToSave = lines.filter(l => !l.markedForDeletion)
-          const linesToDelete = lines.filter(l => l.markedForDeletion)
-          
-          // Supprimer les lignes marquées pour suppression
-          setLines(linesToSave.map(line => ({ ...line, isTemporary: false })))
-          
-          showToast('success', `Configuration sauvegardée. ${linesToSave.length} ligne(s) mise(s) à jour, ${linesToDelete.length} ligne(s) supprimée(s)`)
-        })
-        .catch((error) => {
-          console.error('Erreur lors de la sauvegarde:', error)
-          showToast('error', 'Erreur lors de la sauvegarde')
-        })
-    } else {
-      showToast('error', 'Aucune entreprise sélectionnée')
+    try {
+      setIsLoading(true)
+      const enterpriseId = user.enterprises[0].id
+      
+      // Sauvegarder les opérations
+      await supabaseHooks.saveBlanchimentOperations(enterpriseId, lines)
+      
+      // Sauvegarder la configuration
+      await supabaseHooks.updateEnterpriseSettings(enterpriseId, { blanchiment: config })
+      
+      const linesToSave = lines.filter(l => !l.markedForDeletion)
+      const linesToDelete = lines.filter(l => l.markedForDeletion)
+      
+      setLines(linesToSave.map(line => ({ ...line, isTemporary: false })))
+      
+      showToast('success', `Configuration sauvegardée. ${linesToSave.length} ligne(s) mise(s) à jour, ${linesToDelete.length} ligne(s) supprimée(s)`)
+    } catch (error) {
+      console.error('Erreur:', error)
+      showToast('error', 'Erreur lors de la sauvegarde')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleExport = (format: 'pdf' | 'excel') => {
     if (!canExport) return
+    
+    if (format === 'excel') {
+      const exportData = lines.filter(l => !l.markedForDeletion).map(line => ({
+        Statut: line.statut,
+        'Date Reçu': line.dateRecu,
+        'Date Rendu': line.dateRendu,
+        'Durée (jours)': line.duree,
+        Groupe: line.groupe,
+        Employé: line.employe,
+        Donneur: line.donneur,
+        Receveur: line.recep,
+        Somme: line.somme,
+        '% Entreprise': line.percEntreprise,
+        '% Groupe': line.percGroupe
+      }))
+      
+      const filename = `blanchiment_${user?.enterprises?.[0]?.name || 'export'}_${new Date().toISOString().split('T')[0]}.xlsx`
+      exportToExcel(exportData, filename)
+    }
+    
     showToast('success', `Export ${format.toUpperCase()} généré avec succès`)
   }
 
-  const globalPercentages = { percEntreprise: 20, percGroupe: 15 } // Simulation des pourcentages globaux
+  const archiveOperations = async () => {
+    if (!canEdit || !user?.enterprises?.[0]?.id) return
+
+    try {
+      setIsLoading(true)
+      
+      const reportData = {
+        type: 'blanchiment',
+        description: `Rapport blanchiment ${new Date().toLocaleDateString('fr-FR')}`,
+        totalAmount: totalSomme,
+        operations: lines.filter(l => !l.markedForDeletion).length,
+        lines: lines.filter(l => !l.markedForDeletion),
+        config
+      }
+      
+      await supabaseHooks.archiveReport(user.enterprises[0].id, reportData)
+      showToast('success', 'Opérations archivées avec succès')
+    } catch (error) {
+      console.error('Erreur:', error)
+      showToast('error', 'Erreur lors de l\'archivage')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const globalPercentages = { percEntreprise: 20, percGroupe: 15 }
   const effectivePercentages = config.useGlobal ? globalPercentages : config
 
   const totalSomme = lines.filter(l => !l.markedForDeletion).reduce((sum, line) => sum + line.somme, 0)
   const averageDuration = lines.filter(l => !l.markedForDeletion && l.duree > 0).reduce((sum, line, _, arr) => sum + line.duree / arr.length, 0)
+  const operationsEnCours = lines.filter(l => !l.markedForDeletion && l.statut === 'En cours').length
+  const operationsTerminees = lines.filter(l => !l.markedForDeletion && l.statut === 'Terminé').length
 
   return (
     <div className="space-y-6">
@@ -259,16 +341,22 @@ export function BlanchimentTab() {
         </div>
       )}
 
-      <div className="flex items-center space-x-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestion du Blanchiment</h2>
-          <p className="text-muted-foreground">
-            Configuration et suivi des opérations de blanchiment
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Gestion du Blanchiment</h2>
+            <p className="text-muted-foreground">
+              Configuration et suivi des opérations de blanchiment
+            </p>
+          </div>
+          <Badge className={config.enabled ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+            {config.enabled ? 'Activé' : 'Désactivé'}
+          </Badge>
         </div>
-        <Badge className="bg-orange-100 text-orange-800">
-          {config.enabled ? 'Activé' : 'Désactivé'}
-        </Badge>
+        <Button onClick={loadBlanchimentData} variant="outline" disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -285,25 +373,23 @@ export function BlanchimentTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Opérations</CardTitle>
-            <Shuffle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">En Cours</CardTitle>
+            <Shuffle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{lines.filter(l => !l.markedForDeletion).length}</div>
-            <p className="text-xs text-muted-foreground">En cours</p>
+            <div className="text-2xl font-bold text-orange-600">{operationsEnCours}</div>
+            <p className="text-xs text-muted-foreground">Opérations actives</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">% Entreprise</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium">Terminées</CardTitle>
+            <Shuffle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{effectivePercentages.percEntreprise}%</div>
-            <p className="text-xs text-muted-foreground">
-              {config.useGlobal ? 'Global' : 'Local'}
-            </p>
+            <div className="text-2xl font-bold text-green-600">{operationsTerminees}</div>
+            <p className="text-xs text-muted-foreground">Complétées</p>
           </CardContent>
         </Card>
 
@@ -319,7 +405,7 @@ export function BlanchimentTab() {
         </Card>
       </div>
 
-      {canEdit && (
+      {canManageConfig && (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="text-yellow-800">Configuration du Blanchiment</CardTitle>
@@ -347,45 +433,80 @@ export function BlanchimentTab() {
                     onCheckedChange={(checked) => handleConfigChange('useGlobal', checked)}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="threshold">Seuil minimum (€)</Label>
+                  <Input
+                    id="threshold"
+                    type="number"
+                    min="0"
+                    value={config.threshold}
+                    onChange={(e) => handleConfigChange('threshold', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
               </div>
               
-              {!config.useGlobal && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="percEntreprise">% Entreprise (0-100)</Label>
-                    <Input
-                      id="percEntreprise"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={config.percEntreprise}
-                      onChange={(e) => handleConfigChange('percEntreprise', parseFloat(e.target.value) || 0)}
-                      className={errors.percEntreprise ? 'border-red-500' : ''}
-                    />
-                    {errors.percEntreprise && (
-                      <p className="text-sm text-red-600">{errors.percEntreprise}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="percGroupe">% Groupe (0-100)</Label>
-                    <Input
-                      id="percGroupe"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={config.percGroupe}
-                      onChange={(e) => handleConfigChange('percGroupe', parseFloat(e.target.value) || 0)}
-                      className={errors.percGroupe ? 'border-red-500' : ''}
-                    />
-                    {errors.percGroupe && (
-                      <p className="text-sm text-red-600">{errors.percGroupe}</p>
-                    )}
-                  </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="maxAmount">Montant maximum (€)</Label>
+                  <Input
+                    id="maxAmount"
+                    type="number"
+                    min="0"
+                    value={config.maxAmount}
+                    onChange={(e) => handleConfigChange('maxAmount', parseFloat(e.target.value) || 0)}
+                  />
                 </div>
-              )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="cooldown">Délai de carence (heures)</Label>
+                  <Input
+                    id="cooldown"
+                    type="number"
+                    min="0"
+                    value={config.cooldownHours}
+                    onChange={(e) => handleConfigChange('cooldownHours', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+
+                {!config.useGlobal && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="percEntreprise">% Entreprise</Label>
+                      <Input
+                        id="percEntreprise"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={config.percEntreprise}
+                        onChange={(e) => handleConfigChange('percEntreprise', parseFloat(e.target.value) || 0)}
+                        className={errors.percEntreprise ? 'border-red-500' : ''}
+                      />
+                      {errors.percEntreprise && (
+                        <p className="text-sm text-red-600">{errors.percEntreprise}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="percGroupe">% Groupe</Label>
+                      <Input
+                        id="percGroupe"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={config.percGroupe}
+                        onChange={(e) => handleConfigChange('percGroupe', parseFloat(e.target.value) || 0)}
+                        className={errors.percGroupe ? 'border-red-500' : ''}
+                      />
+                      {errors.percGroupe && (
+                        <p className="text-sm text-red-600">{errors.percGroupe}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -395,6 +516,29 @@ export function BlanchimentTab() {
                 {config.useGlobal && <span className="ml-2 text-xs">(Paramètres globaux)</span>}
               </p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {canEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Import de Données</CardTitle>
+            <CardDescription>
+              Format: Statut;Date Reçu;Date Rendu;Groupe;Employé;Donneur;Recep;Somme
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              className="min-h-32 font-mono text-sm"
+              placeholder="En cours;2024-01-15;2024-01-20;Groupe A;Jean Dupont;Client X;Dest Y;25000&#10;Terminé;2024-01-10;2024-01-18;Groupe B;Marie Martin;Client Z;Dest W;45000"
+              value={pasteData}
+              onChange={(e) => setPasteData(e.target.value)}
+            />
+            <Button onClick={handlePasteData} disabled={!pasteData.trim()}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer les Opérations
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -439,7 +583,7 @@ export function BlanchimentTab() {
                   .filter(line => !line.markedForDeletion)
                   .sort((a, b) => new Date(b.dateRecu).getTime() - new Date(a.dateRecu).getTime())
                   .map((line) => (
-                  <tr key={line.id} className={`border-b hover:bg-muted/50 ${line.isTemporary ? 'bg-blue-50' : ''}`}>
+                  <tr key={line.id} className={`border-b hover:bg-muted/50 ${line.isTemporary ? 'bg-blue-50' : ''} ${line.markedForDeletion ? 'opacity-50 bg-red-50' : ''}`}>
                     <td className="p-2">
                       <select
                         value={line.statut}
@@ -547,14 +691,23 @@ export function BlanchimentTab() {
                     </td>
                     {canEdit && (
                       <td className="p-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteLine(line.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedOperation(line)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteLine(line.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -575,26 +728,110 @@ export function BlanchimentTab() {
           
           <div className="flex space-x-2 mt-4">
             {canEdit && (
-              <Button onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Sauvegarder
-              </Button>
+              <>
+                <Button onClick={handleSave} disabled={isLoading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Sauvegarder
+                </Button>
+                <Button onClick={archiveOperations} variant="outline" disabled={isLoading}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archiver
+                </Button>
+              </>
             )}
             {canExport && (
               <>
-                <Button onClick={() => handleExport('pdf')} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export PDF
-                </Button>
                 <Button onClick={() => handleExport('excel')} variant="outline">
                   <Download className="mr-2 h-4 w-4" />
                   Export Excel
+                </Button>
+                <Button onClick={() => handleExport('pdf')} variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export PDF
                 </Button>
               </>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de détail d'opération */}
+      {selectedOperation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Détail de l'Opération</h3>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedOperation(null)}>
+                  ×
+                </Button>
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <Label>Statut</Label>
+                    <Badge className={
+                      selectedOperation.statut === 'En cours' ? 'bg-orange-100 text-orange-800' :
+                      selectedOperation.statut === 'Terminé' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }>
+                      {selectedOperation.statut}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label>Montant</Label>
+                    <p className="text-lg font-bold">{formatCurrency(selectedOperation.somme)}</p>
+                  </div>
+                  <div>
+                    <Label>Durée de traitement</Label>
+                    <p>{selectedOperation.duree} jour(s)</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label>Groupe</Label>
+                    <p>{selectedOperation.groupe}</p>
+                  </div>
+                  <div>
+                    <Label>Employé responsable</Label>
+                    <p>{selectedOperation.employe}</p>
+                  </div>
+                  <div>
+                    <Label>Commissions</Label>
+                    <p>Entreprise: {selectedOperation.percEntreprise}% • Groupe: {selectedOperation.percGroupe}%</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Calculs financiers</h4>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Commission entreprise:</span>
+                    <span className="font-medium">{formatCurrency(selectedOperation.somme * selectedOperation.percEntreprise / 100)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Commission groupe:</span>
+                    <span className="font-medium">{formatCurrency(selectedOperation.somme * selectedOperation.percGroupe / 100)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="font-medium">Total commissions:</span>
+                    <span className="font-bold">{formatCurrency(selectedOperation.somme * (selectedOperation.percEntreprise + selectedOperation.percGroupe) / 100)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-6">
+                <Button variant="outline" onClick={() => setSelectedOperation(null)}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
