@@ -114,7 +114,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             username: discordUser.username,
             discriminator: discordUser.discriminator,
             avatar: discordUser.avatar,
-            email: discordUser.email,
             firstName: '',
             lastName: '',
             guilds: processedGuilds,
@@ -181,7 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const updateProfile = async (profileData: { firstName: string; lastName: string; avatar: string }) => {
+  const updateProfile = async (profileData: { firstName: string; lastName: string; avatar?: string }) => {
     if (!user) return
 
     try {
@@ -189,7 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ...user,
         firstName: profileData.firstName,
         lastName: profileData.lastName,
-        avatar: profileData.avatar
+        avatar: profileData.avatar || user.avatar
       }
 
       setUser(updatedUser)

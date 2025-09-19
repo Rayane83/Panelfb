@@ -15,14 +15,14 @@ import {
   Trash2,
   Plus,
   Save,
-  TestTube,
-  RotateCcw,
   Upload,
   Download,
   Calculator,
   Users,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Edit,
+  Eye
 } from 'lucide-react';
 import { useSupabase } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -50,6 +50,7 @@ interface TaxBracket {
 }
 
 interface TaxGrid {
+  id?: string;
   min_profit: number;
   max_profit: number | null;
   tax_rate: number;
@@ -68,6 +69,7 @@ const SuperAdminPage: React.FC = () => {
   // États pour les différentes sections
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([]);
+  const [wealthBrackets, setWealthBrackets] = useState<TaxBracket[]>([]);
   const [taxGrids, setTaxGrids] = useState<TaxGrid[]>([]);
   
   // États pour les formulaires
@@ -79,8 +81,22 @@ const SuperAdminPage: React.FC = () => {
     owner_discord_id: ''
   });
 
+  const [newTaxBracket, setNewTaxBracket] = useState({
+    type: 'IS',
+    min_amount: 0,
+    max_amount: null as number | null,
+    rate: 0
+  });
+
+  const [newWealthBracket, setNewWealthBracket] = useState({
+    type: 'richesse',
+    min_amount: 0,
+    max_amount: null as number | null,
+    rate: 0
+  });
+
   const [taxGridData, setTaxGridData] = useState('');
-  const [wealthGridData, setWealthGridData] = useState('');
+  const [editingGrid, setEditingGrid] = useState<TaxGrid | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -99,17 +115,17 @@ const SuperAdminPage: React.FC = () => {
       const enterprisesData = await supabaseHooks.getAllEnterprises();
       setEnterprises(enterprisesData);
 
-      // Charger les tranches fiscales
+      // Charger les tranches fiscales IS
       const taxBracketsData = await supabaseHooks.getTaxBrackets('IS');
       setTaxBrackets(taxBracketsData);
 
-      // Simuler les grilles fiscales complètes
-      const mockTaxGrids = [
-        { min_profit: 100, max_profit: 9999, tax_rate: 7, max_employee_salary: 5000, max_boss_salary: 8000, max_employee_bonus: 2500, max_boss_bonus: 4000 },
-        { min_profit: 10000, max_profit: 29999, tax_rate: 9, max_employee_salary: 10000, max_boss_salary: 15000, max_employee_bonus: 5000, max_boss_bonus: 7500 },
-        { min_profit: 30000, max_profit: 49999, tax_rate: 16, max_employee_salary: 20000, max_boss_salary: 25000, max_employee_bonus: 10000, max_boss_bonus: 12500 }
-      ];
-      setTaxGrids(mockTaxGrids);
+      // Charger les tranches fiscales richesse
+      const wealthBracketsData = await supabaseHooks.getTaxBrackets('richesse');
+      setWealthBrackets(wealthBracketsData);
+
+      // Charger les grilles fiscales complètes
+      const taxGridsData = await supabaseHooks.getTaxGrids();
+      setTaxGrids(taxGridsData);
 
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -144,13 +160,61 @@ const SuperAdminPage: React.FC = () => {
     }
   };
 
-  const parseTaxGrid = (data: string) => {
+  const createTaxBracket = async () => {
+    try {
+      if (!newTaxBracket.min_amount || !newTaxBracket.rate) {
+        showToast('error', 'Veuillez remplir tous les champs obligatoires');
+        return;
+      }
+
+      const bracketData = await supabaseHooks.createTaxBracket(newTaxBracket);
+      setTaxBrackets(prev => [...prev, bracketData]);
+      
+      setNewTaxBracket({
+        type: 'IS',
+        min_amount: 0,
+        max_amount: null,
+        rate: 0
+      });
+      
+      showToast('success', 'Tranche fiscale IS créée');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de la création');
+    }
+  };
+
+  const createWealthBracket = async () => {
+    try {
+      if (!newWealthBracket.min_amount || !newWealthBracket.rate) {
+        showToast('error', 'Veuillez remplir tous les champs obligatoires');
+        return;
+      }
+
+      const bracketData = await supabaseHooks.createTaxBracket(newWealthBracket);
+      setWealthBrackets(prev => [...prev, bracketData]);
+      
+      setNewWealthBracket({
+        type: 'richesse',
+        min_amount: 0,
+        max_amount: null,
+        rate: 0
+      });
+      
+      showToast('success', 'Tranche fiscale richesse créée');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de la création');
+    }
+  };
+
+  const parseTaxGrid = (data: string): TaxGrid[] => {
     const lines = data.trim().split('\n');
     const grids: TaxGrid[] = [];
     
     for (const line of lines) {
       const parts = line.split('\t').map(p => p.trim().replace(/\$|%|,/g, ''));
-      if (parts.length >= 6) {
+      if (parts.length >= 7) {
         const minProfit = parseFloat(parts[0].replace(/\s/g, '')) || 0;
         const maxProfit = parseFloat(parts[1].replace(/\s/g, '')) || null;
         const taxRate = parseFloat(parts[2]) || 0;
@@ -183,12 +247,40 @@ const SuperAdminPage: React.FC = () => {
         return;
       }
 
-      setTaxGrids(grids);
-      showToast('success', `${grids.length} tranches fiscales importées`);
+      // Sauvegarder les grilles en base
+      await supabaseHooks.saveTaxGrids(grids);
+      await loadData();
+      
+      showToast('success', `${grids.length} tranches fiscales importées et sauvegardées`);
       setTaxGridData('');
     } catch (error) {
       console.error('Erreur:', error);
       showToast('error', 'Erreur lors de l\'import de la grille fiscale');
+    }
+  };
+
+  const updateTaxGrid = async (grid: TaxGrid) => {
+    try {
+      await supabaseHooks.updateTaxGrid(grid);
+      await loadData();
+      setEditingGrid(null);
+      showToast('success', 'Grille fiscale mise à jour');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const deleteTaxGrid = async (gridId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette tranche ?')) return;
+    
+    try {
+      await supabaseHooks.deleteTaxGrid(gridId);
+      await loadData();
+      showToast('success', 'Tranche supprimée');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de la suppression');
     }
   };
 
@@ -199,6 +291,25 @@ const SuperAdminPage: React.FC = () => {
       await supabaseHooks.deleteEnterprise(id);
       setEnterprises(prev => prev.filter(e => e.id !== id));
       showToast('success', 'Entreprise supprimée');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showToast('error', 'Erreur lors de la suppression');
+    }
+  };
+
+  const deleteTaxBracket = async (id: string, type: 'IS' | 'richesse') => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette tranche ?')) return;
+    
+    try {
+      await supabaseHooks.deleteTaxBracket(id);
+      
+      if (type === 'IS') {
+        setTaxBrackets(prev => prev.filter(b => b.id !== id));
+      } else {
+        setWealthBrackets(prev => prev.filter(b => b.id !== id));
+      }
+      
+      showToast('success', 'Tranche fiscale supprimée');
     } catch (error) {
       console.error('Erreur:', error);
       showToast('error', 'Erreur lors de la suppression');
@@ -258,9 +369,10 @@ const SuperAdminPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="enterprises" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="enterprises">Gestion Entreprises</TabsTrigger>
-          <TabsTrigger value="tax-grids">Grilles Fiscales</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="enterprises">Entreprises</TabsTrigger>
+          <TabsTrigger value="tax-brackets">Tranches Fiscales</TabsTrigger>
+          <TabsTrigger value="tax-grids">Grilles Complètes</TabsTrigger>
           <TabsTrigger value="system">Système</TabsTrigger>
         </TabsList>
 
@@ -295,7 +407,7 @@ const SuperAdminPage: React.FC = () => {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Tranches Fiscales</CardTitle>
+                  <CardTitle className="text-sm font-medium">Tranches IS</CardTitle>
                   <Calculator className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -458,15 +570,176 @@ const SuperAdminPage: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* Grilles fiscales */}
+        {/* Tranches fiscales */}
+        <TabsContent value="tax-brackets">
+          <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Tranches IS */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5" />
+                    Tranches Impôt sur les Sociétés
+                  </CardTitle>
+                  <CardDescription>
+                    Configuration des tranches IS ({taxBrackets.length} tranches)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Formulaire création IS */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                    <h4 className="font-medium text-blue-800">Nouvelle tranche IS</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Montant min"
+                        value={newTaxBracket.min_amount}
+                        onChange={(e) => setNewTaxBracket(prev => ({ ...prev, min_amount: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Montant max (optionnel)"
+                        value={newTaxBracket.max_amount || ''}
+                        onChange={(e) => setNewTaxBracket(prev => ({ ...prev, max_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Taux (%)"
+                        value={newTaxBracket.rate}
+                        onChange={(e) => setNewTaxBracket(prev => ({ ...prev, rate: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <Button onClick={createTaxBracket} size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Liste des tranches IS */}
+                  <div className="space-y-3">
+                    {taxBrackets.map((bracket) => (
+                      <div key={bracket.id} className="flex justify-between items-center p-3 border rounded">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {formatCurrency(bracket.min_amount)} - {bracket.max_amount ? formatCurrency(bracket.max_amount) : '∞'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Créée le {new Date(bracket.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className="bg-blue-100 text-blue-800">{bracket.rate}%</Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600"
+                            onClick={() => deleteTaxBracket(bracket.id, 'IS')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {taxBrackets.length === 0 && (
+                      <p className="text-center text-muted-foreground py-4">
+                        Aucune tranche IS configurée
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tranches richesse */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Tranches Impôt sur la Richesse
+                  </CardTitle>
+                  <CardDescription>
+                    Configuration des tranches richesse ({wealthBrackets.length} tranches)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Formulaire création richesse */}
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+                    <h4 className="font-medium text-purple-800">Nouvelle tranche richesse</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Montant min"
+                        value={newWealthBracket.min_amount}
+                        onChange={(e) => setNewWealthBracket(prev => ({ ...prev, min_amount: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Montant max (optionnel)"
+                        value={newWealthBracket.max_amount || ''}
+                        onChange={(e) => setNewWealthBracket(prev => ({ ...prev, max_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Taux (%)"
+                        value={newWealthBracket.rate}
+                        onChange={(e) => setNewWealthBracket(prev => ({ ...prev, rate: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <Button onClick={createWealthBracket} size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Liste des tranches richesse */}
+                  <div className="space-y-3">
+                    {wealthBrackets.map((bracket) => (
+                      <div key={bracket.id} className="flex justify-between items-center p-3 border rounded">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {formatCurrency(bracket.min_amount)} - {bracket.max_amount ? formatCurrency(bracket.max_amount) : '∞'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Créée le {new Date(bracket.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className="bg-purple-100 text-purple-800">{bracket.rate}%</Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600"
+                            onClick={() => deleteTaxBracket(bracket.id, 'richesse')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {wealthBrackets.length === 0 && (
+                      <p className="text-center text-muted-foreground py-4">
+                        Aucune tranche richesse configurée
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Grilles fiscales complètes */}
         <TabsContent value="tax-grids">
           <div className="space-y-6">
-            {/* Import grille d'imposition */}
+            {/* Import grille complète */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  Configurer la grille d'imposition
+                  Configurer la grille fiscale complète
                 </CardTitle>
                 <CardDescription>
                   Format Excel/CSV: Bénéfice min | Bénéfice max | Taux | Salaire max employé | Salaire max patron | Prime max employé | Prime max patron
@@ -476,63 +749,100 @@ const SuperAdminPage: React.FC = () => {
                 <Textarea
                   placeholder="100	9999	7	5000	8000	2500	4000
 10000	29999	9	10000	15000	5000	7500
-30000	49999	16	20000	25000	10000	12500"
+30000	49999	16	20000	25000	10000	12500
+50000	99999	25	30000	40000	15000	20000
+100000		33	50000	75000	25000	37500"
                   value={taxGridData}
                   onChange={(e) => setTaxGridData(e.target.value)}
                   className="min-h-32 font-mono text-sm"
                 />
-                <Button onClick={importTaxGrid} disabled={!taxGridData.trim()}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importer la grille d'imposition
-                </Button>
+                <div className="flex space-x-2">
+                  <Button onClick={importTaxGrid} disabled={!taxGridData.trim()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer la grille complète
+                  </Button>
+                  <Button variant="outline" onClick={() => setTaxGridData('')}>
+                    Effacer
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Aperçu grille d'imposition */}
-            {taxGrids.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Grille d'imposition actuelle</CardTitle>
-                  <CardDescription>
-                    {taxGrids.length} tranches configurées
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Bénéfice Min</th>
-                          <th className="text-left p-2">Bénéfice Max</th>
-                          <th className="text-left p-2">Taux</th>
-                          <th className="text-left p-2">Sal. Max Emp.</th>
-                          <th className="text-left p-2">Sal. Max Pat.</th>
-                          <th className="text-left p-2">Prime Max Emp.</th>
-                          <th className="text-left p-2">Prime Max Pat.</th>
+            {/* Grille fiscale actuelle */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Grille fiscale complète actuelle</CardTitle>
+                <CardDescription>
+                  {taxGrids.length} tranches configurées avec limites salariales
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">Bénéfice Min</th>
+                        <th className="text-left p-2">Bénéfice Max</th>
+                        <th className="text-left p-2">Taux</th>
+                        <th className="text-left p-2">Sal. Max Emp.</th>
+                        <th className="text-left p-2">Sal. Max Pat.</th>
+                        <th className="text-left p-2">Prime Max Emp.</th>
+                        <th className="text-left p-2">Prime Max Pat.</th>
+                        <th className="text-left p-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {taxGrids.map((grid, index) => (
+                        <tr key={grid.id || index} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{formatCurrency(grid.min_profit)}</td>
+                          <td className="p-2">
+                            {grid.max_profit ? formatCurrency(grid.max_profit) : '∞'}
+                          </td>
+                          <td className="p-2">
+                            <Badge>{grid.tax_rate}%</Badge>
+                          </td>
+                          <td className="p-2">{formatCurrency(grid.max_employee_salary)}</td>
+                          <td className="p-2">{formatCurrency(grid.max_boss_salary)}</td>
+                          <td className="p-2">{formatCurrency(grid.max_employee_bonus)}</td>
+                          <td className="p-2">{formatCurrency(grid.max_boss_bonus)}</td>
+                          <td className="p-2">
+                            <div className="flex space-x-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingGrid(grid)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {grid.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600"
+                                  onClick={() => deleteTaxGrid(grid.id!)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {taxGrids.map((grid, index) => (
-                          <tr key={index} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{formatCurrency(grid.min_profit)}</td>
-                            <td className="p-2">
-                              {grid.max_profit ? formatCurrency(grid.max_profit) : '∞'}
-                            </td>
-                            <td className="p-2">
-                              <Badge>{grid.tax_rate}%</Badge>
-                            </td>
-                            <td className="p-2">{formatCurrency(grid.max_employee_salary)}</td>
-                            <td className="p-2">{formatCurrency(grid.max_boss_salary)}</td>
-                            <td className="p-2">{formatCurrency(grid.max_employee_bonus)}</td>
-                            <td className="p-2">{formatCurrency(grid.max_boss_bonus)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {taxGrids.length === 0 && (
+                  <div className="text-center py-8">
+                    <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground">Aucune grille configurée</p>
+                    <p className="text-sm text-muted-foreground">
+                      Importez votre première grille fiscale ci-dessus
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
@@ -606,6 +916,92 @@ const SuperAdminPage: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Modal d'édition de grille */}
+      {editingGrid && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Modifier la tranche fiscale</h3>
+                <Button variant="ghost" size="sm" onClick={() => setEditingGrid(null)}>
+                  ×
+                </Button>
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Bénéfice minimum (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.min_profit}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, min_profit: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bénéfice maximum (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.max_profit || ''}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, max_profit: e.target.value ? parseFloat(e.target.value) : null } : null)}
+                    placeholder="Laissez vide pour ∞"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Taux d'imposition (%)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.tax_rate}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, tax_rate: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Salaire max employé (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.max_employee_salary}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, max_employee_salary: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Salaire max patron (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.max_boss_salary}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, max_boss_salary: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prime max employé (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.max_employee_bonus}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, max_employee_bonus: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prime max patron (€)</Label>
+                  <Input
+                    type="number"
+                    value={editingGrid.max_boss_bonus}
+                    onChange={(e) => setEditingGrid(prev => prev ? { ...prev, max_boss_bonus: parseFloat(e.target.value) || 0 } : null)}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <Button variant="outline" onClick={() => setEditingGrid(null)}>
+                  Annuler
+                </Button>
+                <Button onClick={() => updateTaxGrid(editingGrid)}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

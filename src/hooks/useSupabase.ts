@@ -1002,6 +1002,105 @@ export function useSupabase() {
     }
   }
 
+  // Fonctions pour les grilles fiscales complètes
+  const getTaxGrids = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tax_grids')
+        .select('*')
+        .order('min_profit', { ascending: true })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax grids:', error)
+      return []
+    }
+  }
+
+  const saveTaxGrids = async (grids: any[]) => {
+    try {
+      // Supprimer les anciennes grilles
+      await supabase.from('tax_grids').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+
+      // Insérer les nouvelles grilles
+      const { data, error } = await supabase
+        .from('tax_grids')
+        .insert(grids)
+        .select()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error saving tax grids:', error)
+      throw error
+    }
+  }
+
+  const updateTaxGrid = async (grid: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('tax_grids')
+        .update(grid)
+        .eq('id', grid.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating tax grid:', error)
+      throw error
+    }
+  }
+
+  const deleteTaxGrid = async (gridId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tax_grids')
+        .delete()
+        .eq('id', gridId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting tax grid:', error)
+      throw error
+    }
+  }
+
+  // Fonctions pour les rapports fiscaux
+  const getTaxReports = async (enterpriseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tax_reports')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax reports:', error)
+      return []
+    }
+  }
+
+  const saveTaxReport = async (reportData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('tax_reports')
+        .insert(reportData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error saving tax report:', error)
+      throw error
+    }
+  }
+
   return {
     isConnected,
     getAllEnterprises,
@@ -1055,6 +1154,12 @@ export function useSupabase() {
     updateGrade,
     getEnterprise,
     updateEnterpriseSettings,
-    getDocumentUrl
+    getDocumentUrl,
+    getTaxGrids,
+    saveTaxGrids,
+    updateTaxGrid,
+    deleteTaxGrid,
+    getTaxReports,
+    saveTaxReport
   }
 }

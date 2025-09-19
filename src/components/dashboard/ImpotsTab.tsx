@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useSupabase } from '../../hooks/useSupabase'
-import { Calculator, Download, Receipt, TrendingUp, AlertTriangle, Save, Archive, FileText, Eye } from 'lucide-react'
+import { Calculator, Download, Receipt, TrendingUp, AlertTriangle, Save, Archive, FileText, Eye, RefreshCw } from 'lucide-react'
 import { formatCurrency } from '../../lib/utils'
 
 interface TaxBracket {
@@ -26,20 +26,27 @@ interface TaxCalculation {
   brackets: { bracket: TaxBracket; taxOnBracket: number }[]
 }
 
-interface TaxSimulation {
+interface TaxReport {
   id: string
-  base_amount: number
+  enterprise_id: string
   period: string
-  tax_type: string
+  base_amount: number
   calculated_tax: number
   effective_rate: number
+  tax_type: string
+  created_by: string
   created_at: string
 }
 
-interface SimulationParams {
-  base: number
-  periode: string
-  bareme: 'IS' | 'richesse'
+interface RealTaxData {
+  period: string
+  totalCA: number
+  totalExpenses: number
+  netProfit: number
+  calculatedTax: number
+  effectiveRate: number
+  wealthTax: number
+  finalAmount: number
 }
 
 export function ImpotsTab() {
@@ -47,22 +54,17 @@ export function ImpotsTab() {
   const { hasPermission } = usePermissions()
   const supabaseHooks = useSupabase()
   
-  const [simulation, setSimulation] = useState<SimulationParams>({
-    base: 0,
-    periode: 'mensuel',
-    bareme: 'IS'
-  })
-  const [calculation, setCalculation] = useState<TaxCalculation | null>(null)
+  const [realTaxData, setRealTaxData] = useState<RealTaxData | null>(null)
   const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([])
   const [wealthBrackets, setWealthBrackets] = useState<TaxBracket[]>([])
-  const [simulations, setSimulations] = useState<TaxSimulation[]>([])
-  const [errors, setErrors] = useState<{[key: string]: string}>({})
+  const [taxReports, setTaxReports] = useState<TaxReport[]>([])
+  const [selectedPeriod, setSelectedPeriod] = useState('')
   const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   
-  const canSimulate = hasPermission('impots') && ['superviseur', 'patron', 'co_patron', 'dot'].includes(user?.role || '')
+  const canCalculate = hasPermission('impots') && ['superviseur', 'patron', 'co_patron', 'dot'].includes(user?.role || '')
   const canViewBaremes = hasPermission('impots')
-  const canSaveSimulation = hasPermission('impots') && ['patron', 'co_patron'].includes(user?.role || '')
+  const canSaveReport = hasPermission('impots') && ['patron', 'co_patron'].includes(user?.role || '')
 
   useEffect(() => {
     loadTaxData()
@@ -80,11 +82,14 @@ export function ImpotsTab() {
       const wealthBracketsData = await supabaseHooks.getTaxBrackets('richesse')
       setWealthBrackets(wealthBracketsData)
       
-      // Charger les simulations précédentes
+      // Charger les rapports fiscaux précédents
       if (user?.enterprises?.[0]?.id) {
-        const simulationsData = await supabaseHooks.getTaxSimulations(user.enterprises[0].id)
-        setSimulations(simulationsData)
+        const reportsData = await supabaseHooks.getTaxReports(user.enterprises[0].id)
+        setTaxReports(reportsData)
       }
+
+      // Calculer les données fiscales réelles basées sur les dotations
+      await calculateRealTaxData()
     } catch (error) {
       console.error('Erreur lors du chargement:', error)
       showToast('error', 'Erreur lors du chargement des données fiscales')
@@ -93,25 +98,60 @@ export function ImpotsTab() {
     }
   }
 
+  const calculateRealTaxData = async () => {
+    if (!user?.enterprises?.[0]?.id) return
+
+    try {
+      const enterpriseId = user.enterprises[0].id
+      
+      // Récupérer les données réelles depuis les dotations
+      const dotations = await supabaseHooks.getDotations(enterpriseId)
+      
+      if (dotations.length === 0) {
+        setRealTaxData(null)
+        return
+      }
+
+      const latestDotation = dotations[0]
+      const totalCA = latestDotation.total_ca || 0
+      const totalSalaries = latestDotation.total_salaries || 0
+      const totalBonuses = latestDotation.total_bonuses || 0
+      
+      // Récupérer les dépenses déductibles
+      const expenses = await supabaseHooks.getDotationExpenses(latestDotation.id)
+      const totalExpenses = expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
+      
+      // Calcul du bénéfice net
+      const netProfit = totalCA - totalSalaries - totalBonuses - totalExpenses
+      
+      // Calcul de l'impôt IS
+      const taxCalculation = calculateTax(netProfit, taxBrackets)
+      
+      // Calcul de l'impôt sur la richesse (sur le bénéfice après IS)
+      const profitAfterIS = netProfit - taxCalculation.taxOwed
+      const wealthTaxCalculation = calculateTax(profitAfterIS, wealthBrackets)
+      
+      const finalAmount = profitAfterIS - wealthTaxCalculation.taxOwed
+
+      setRealTaxData({
+        period: latestDotation.period,
+        totalCA,
+        totalExpenses: totalSalaries + totalBonuses + totalExpenses,
+        netProfit,
+        calculatedTax: taxCalculation.taxOwed,
+        effectiveRate: taxCalculation.effectiveRate,
+        wealthTax: wealthTaxCalculation.taxOwed,
+        finalAmount
+      })
+    } catch (error) {
+      console.error('Erreur lors du calcul:', error)
+      showToast('error', 'Erreur lors du calcul des données fiscales')
+    }
+  }
+
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 3000)
-  }
-
-  const validateInput = (field: string, value: any): string => {
-    switch (field) {
-      case 'base':
-        if (!value || isNaN(value) || value < 0) {
-          return 'La base doit être un nombre positif'
-        }
-        break
-      case 'periode':
-        if (!value) {
-          return 'La période est requise'
-        }
-        break
-    }
-    return ''
   }
 
   const calculateTax = (income: number, brackets: TaxBracket[]): TaxCalculation => {
@@ -138,53 +178,34 @@ export function ImpotsTab() {
     }
   }
 
-  const handleSimulation = async () => {
-    if (!canSimulate) return
-
-    const newErrors: {[key: string]: string} = {}
-    
-    const baseError = validateInput('base', simulation.base)
-    const periodeError = validateInput('periode', simulation.periode)
-    
-    if (baseError) newErrors.base = baseError
-    if (periodeError) newErrors.periode = periodeError
-    
-    setErrors(newErrors)
-    
-    if (Object.keys(newErrors).length > 0) {
-      showToast('error', 'Veuillez corriger les erreurs de saisie')
-      return
-    }
-
-    try {
-      const brackets = simulation.bareme === 'IS' ? taxBrackets : wealthBrackets
-      const result = calculateTax(simulation.base, brackets)
-      setCalculation(result)
-      showToast('success', 'Simulation calculée avec succès')
-    } catch (error) {
-      showToast('error', 'Erreur lors du calcul de la simulation')
-    }
-  }
-
-  const saveSimulation = async () => {
-    if (!canSaveSimulation || !calculation || !user?.enterprises?.[0]?.id) return
+  const saveReport = async () => {
+    if (!canSaveReport || !realTaxData || !user?.enterprises?.[0]?.id) return
 
     try {
       setIsLoading(true)
       
-      const simulationData = {
-        base: calculation.income,
-        periode: simulation.periode,
-        bareme: simulation.bareme,
-        taxOwed: calculation.taxOwed,
-        effectiveRate: calculation.effectiveRate,
-        brackets: calculation.brackets
+      const reportData = {
+        enterprise_id: user.enterprises[0].id,
+        period: realTaxData.period,
+        base_amount: realTaxData.netProfit,
+        calculated_tax: realTaxData.calculatedTax + realTaxData.wealthTax,
+        effective_rate: realTaxData.effectiveRate,
+        tax_type: 'IS_RICHESSE',
+        created_by: user.username || 'unknown',
+        details: {
+          ca: realTaxData.totalCA,
+          expenses: realTaxData.totalExpenses,
+          netProfit: realTaxData.netProfit,
+          isTax: realTaxData.calculatedTax,
+          wealthTax: realTaxData.wealthTax,
+          finalAmount: realTaxData.finalAmount
+        }
       }
       
-      await supabaseHooks.saveTaxSimulation(user.enterprises[0].id, simulationData)
-      await loadTaxData() // Recharger les simulations
+      await supabaseHooks.saveTaxReport(reportData)
+      await loadTaxData()
       
-      showToast('success', 'Simulation sauvegardée avec succès')
+      showToast('success', 'Rapport fiscal sauvegardé avec succès')
     } catch (error) {
       console.error('Erreur:', error)
       showToast('error', 'Erreur lors de la sauvegarde')
@@ -193,28 +214,21 @@ export function ImpotsTab() {
     }
   }
 
-  const archiveSimulation = async () => {
-    if (!calculation || !user?.enterprises?.[0]?.id) return
+  const archiveReport = async () => {
+    if (!realTaxData || !user?.enterprises?.[0]?.id) return
 
     try {
       setIsLoading(true)
       
       const reportData = {
-        type: 'simulation_fiscale',
-        description: `Simulation fiscale ${simulation.bareme} - ${simulation.periode}`,
-        totalAmount: calculation.taxOwed,
-        simulation: {
-          base: calculation.income,
-          periode: simulation.periode,
-          bareme: simulation.bareme,
-          taxOwed: calculation.taxOwed,
-          effectiveRate: calculation.effectiveRate,
-          brackets: calculation.brackets
-        }
+        type: 'rapport_fiscal',
+        description: `Rapport fiscal ${realTaxData.period}`,
+        totalAmount: realTaxData.calculatedTax + realTaxData.wealthTax,
+        fiscalData: realTaxData
       }
       
       await supabaseHooks.archiveReport(user.enterprises[0].id, reportData)
-      showToast('success', 'Simulation archivée avec succès')
+      showToast('success', 'Rapport fiscal archivé avec succès')
     } catch (error) {
       console.error('Erreur:', error)
       showToast('error', 'Erreur lors de l\'archivage')
@@ -223,29 +237,23 @@ export function ImpotsTab() {
     }
   }
 
-  const handleInputChange = (field: keyof SimulationParams, value: any) => {
-    setSimulation(prev => ({ ...prev, [field]: value }))
-    
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
-  }
-
-  const exportSimulation = () => {
-    if (!calculation) return
+  const exportReport = () => {
+    if (!realTaxData) return
     
     const exportData = {
-      'Base de calcul': formatCurrency(calculation.income),
-      'Période': simulation.periode,
-      'Barème': simulation.bareme,
-      'Impôts dus': formatCurrency(calculation.taxOwed),
-      'Taux effectif': `${calculation.effectiveRate.toFixed(2)}%`,
-      'Montant net': formatCurrency(calculation.income - calculation.taxOwed)
+      'Période': realTaxData.period,
+      'CA Total': formatCurrency(realTaxData.totalCA),
+      'Total Dépenses': formatCurrency(realTaxData.totalExpenses),
+      'Bénéfice Net': formatCurrency(realTaxData.netProfit),
+      'Impôt IS': formatCurrency(realTaxData.calculatedTax),
+      'Impôt Richesse': formatCurrency(realTaxData.wealthTax),
+      'Total Impôts': formatCurrency(realTaxData.calculatedTax + realTaxData.wealthTax),
+      'Taux Effectif': `${realTaxData.effectiveRate.toFixed(2)}%`,
+      'Montant Final': formatCurrency(realTaxData.finalAmount)
     }
     
-    const filename = `simulation_fiscale_${simulation.bareme}_${new Date().toISOString().split('T')[0]}.xlsx`
-    // Utiliser la fonction d'export
-    showToast('success', `Export généré: ${filename}`)
+    const filename = `rapport_fiscal_${realTaxData.period}_${new Date().toISOString().split('T')[0]}.xlsx`
+    showToast('success', `Rapport fiscal exporté: ${filename}`)
   }
 
   return (
@@ -262,196 +270,193 @@ export function ImpotsTab() {
         </div>
       )}
 
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Gestion Fiscale</h2>
-        <p className="text-muted-foreground">
-          Consultation des barèmes et simulation d'impôts avec sauvegarde
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Gestion Fiscale Réelle</h2>
+          <p className="text-muted-foreground">
+            Calculs fiscaux basés sur les données réelles de vos dotations
+          </p>
+        </div>
+        <Button onClick={loadTaxData} variant="outline" disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taux Effectif</CardTitle>
+            <CardTitle className="text-sm font-medium">Bénéfice Net</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {calculation ? `${calculation.effectiveRate.toFixed(1)}%` : '0%'}
+              {realTaxData ? formatCurrency(realTaxData.netProfit) : formatCurrency(0)}
             </div>
-            <p className="text-xs text-muted-foreground">Taux d'imposition</p>
+            <p className="text-xs text-muted-foreground">Base d'imposition</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Impôt Calculé</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Impôt IS</CardTitle>
+            <Receipt className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {calculation ? formatCurrency(calculation.taxOwed) : formatCurrency(0)}
+            <div className="text-2xl font-bold text-red-600">
+              {realTaxData ? formatCurrency(realTaxData.calculatedTax) : formatCurrency(0)}
             </div>
-            <p className="text-xs text-muted-foreground">Montant des impôts dus</p>
+            <p className="text-xs text-muted-foreground">Impôt sur les sociétés</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenu Net</CardTitle>
-            <Calculator className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Impôt Richesse</CardTitle>
+            <Calculator className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {calculation ? formatCurrency(calculation.income - calculation.taxOwed) : formatCurrency(0)}
+            <div className="text-2xl font-bold text-purple-600">
+              {realTaxData ? formatCurrency(realTaxData.wealthTax) : formatCurrency(0)}
             </div>
-            <p className="text-xs text-muted-foreground">Après impôts</p>
+            <p className="text-xs text-muted-foreground">Impôt sur la fortune</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Simulations</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Montant Final</CardTitle>
+            <FileText className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{simulations.length}</div>
-            <p className="text-xs text-muted-foreground">Sauvegardées</p>
+            <div className="text-2xl font-bold text-green-600">
+              {realTaxData ? formatCurrency(realTaxData.finalAmount) : formatCurrency(0)}
+            </div>
+            <p className="text-xs text-muted-foreground">Après tous impôts</p>
           </CardContent>
         </Card>
       </div>
 
-      {canSimulate && (
+      {/* Calcul fiscal réel */}
+      {realTaxData ? (
         <Card>
           <CardHeader>
-            <CardTitle>Simulation Fiscale</CardTitle>
+            <CardTitle>Calcul Fiscal Réel - Période {realTaxData.period}</CardTitle>
             <CardDescription>
-              Calculez vos impôts selon les barèmes en vigueur
+              Basé sur les données réelles de vos dotations et dépenses
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="base">Base de calcul (€) *</Label>
-                <Input
-                  id="base"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="50000"
-                  value={simulation.base || ''}
-                  onChange={(e) => handleInputChange('base', parseFloat(e.target.value.replace(',', '.')) || 0)}
-                  className={errors.base ? 'border-red-500' : ''}
-                  required
-                />
-                {errors.base && (
-                  <p className="text-sm text-red-600">{errors.base}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="periode">Période *</Label>
-                <select
-                  id="periode"
-                  value={simulation.periode}
-                  onChange={(e) => handleInputChange('periode', e.target.value)}
-                  className={`w-full h-10 px-3 rounded-lg border border-input bg-background text-sm ${
-                    errors.periode ? 'border-red-500' : ''
-                  }`}
-                  required
-                >
-                  <option value="mensuel">Mensuel</option>
-                  <option value="trimestriel">Trimestriel</option>
-                  <option value="annuel">Annuel</option>
-                </select>
-                {errors.periode && (
-                  <p className="text-sm text-red-600">{errors.periode}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="bareme">Barème</Label>
-                <select
-                  id="bareme"
-                  value={simulation.bareme}
-                  onChange={(e) => handleInputChange('bareme', e.target.value as 'IS' | 'richesse')}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
-                >
-                  <option value="IS">Impôt sur les Sociétés</option>
-                  <option value="richesse">Impôt sur la Fortune</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button onClick={handleSimulation} className="flex-1">
-                <Calculator className="mr-2 h-4 w-4" />
-                Calculer la Simulation
-              </Button>
-              {calculation && canSaveSimulation && (
-                <Button onClick={saveSimulation} variant="outline" disabled={isLoading}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Sauvegarder
-                </Button>
-              )}
-              {calculation && (
-                <>
-                  <Button onClick={archiveSimulation} variant="outline" disabled={isLoading}>
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archiver
-                  </Button>
-                  <Button onClick={exportSimulation} variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
-                  </Button>
-                </>
-              )}
+          <CardContent className="space-y-6">
+            {/* Tableau de calcul détaillé */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Étape</th>
+                    <th className="text-left p-3 font-medium">Description</th>
+                    <th className="text-right p-3 font-medium">Montant</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="p-3 font-medium text-green-600">1</td>
+                    <td className="p-3">Chiffre d'affaires total</td>
+                    <td className="p-3 text-right font-medium text-green-600">
+                      {formatCurrency(realTaxData.totalCA)}
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3 font-medium text-red-600">2</td>
+                    <td className="p-3">Dépenses déductibles (salaires + charges + frais)</td>
+                    <td className="p-3 text-right font-medium text-red-600">
+                      -{formatCurrency(realTaxData.totalExpenses)}
+                    </td>
+                  </tr>
+                  <tr className="border-b bg-blue-50">
+                    <td className="p-3 font-medium text-blue-600">3</td>
+                    <td className="p-3 font-medium">Bénéfice imposable</td>
+                    <td className="p-3 text-right font-bold text-blue-600">
+                      {formatCurrency(realTaxData.netProfit)}
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3 font-medium text-red-600">4</td>
+                    <td className="p-3">Impôt sur les sociétés ({realTaxData.effectiveRate.toFixed(1)}%)</td>
+                    <td className="p-3 text-right font-medium text-red-600">
+                      -{formatCurrency(realTaxData.calculatedTax)}
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3 font-medium text-purple-600">5</td>
+                    <td className="p-3">Bénéfice après IS</td>
+                    <td className="p-3 text-right font-medium">
+                      {formatCurrency(realTaxData.netProfit - realTaxData.calculatedTax)}
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3 font-medium text-purple-600">6</td>
+                    <td className="p-3">Impôt sur la richesse</td>
+                    <td className="p-3 text-right font-medium text-purple-600">
+                      -{formatCurrency(realTaxData.wealthTax)}
+                    </td>
+                  </tr>
+                  <tr className="bg-green-50">
+                    <td className="p-3 font-bold text-green-600">7</td>
+                    <td className="p-3 font-bold">Montant final disponible</td>
+                    <td className="p-3 text-right font-bold text-green-600 text-lg">
+                      {formatCurrency(realTaxData.finalAmount)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            {calculation && (
-              <div className="space-y-4 p-4 bg-muted rounded-lg">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Base de calcul:</span>
-                      <span>{formatCurrency(calculation.income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Impôts dus:</span>
-                      <span className="font-bold text-red-600">{formatCurrency(calculation.taxOwed)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Montant net:</span>
-                      <span className="font-bold text-green-600">
-                        {formatCurrency(calculation.income - calculation.taxOwed)}
+            {/* Actions */}
+            <div className="flex space-x-2">
+              {canSaveReport && (
+                <Button onClick={saveReport} disabled={isLoading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Sauvegarder le Rapport
+                </Button>
+              )}
+              <Button onClick={archiveReport} variant="outline" disabled={isLoading}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archiver
+              </Button>
+              <Button onClick={exportReport} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export Excel
+              </Button>
+            </div>
+
+            {/* Détail des tranches appliquées */}
+            {realTaxData.calculatedTax > 0 && (
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-3">Détail du calcul IS:</h4>
+                <div className="space-y-2 text-sm">
+                  {calculateTax(realTaxData.netProfit, taxBrackets).brackets.map((item, index) => (
+                    <div key={index} className="flex justify-between p-2 bg-background rounded">
+                      <span>
+                        {formatCurrency(item.bracket.min_amount)} - {item.bracket.max_amount ? formatCurrency(item.bracket.max_amount) : '∞'} ({item.bracket.rate}%)
                       </span>
+                      <span className="font-medium">{formatCurrency(item.taxOnBracket)}</span>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Progress value={calculation.effectiveRate} className="mt-2" />
-                    <p className="text-xs text-muted-foreground text-center">
-                      Taux effectif: {calculation.effectiveRate.toFixed(2)}%
-                    </p>
-                  </div>
+                  ))}
                 </div>
-                
-                {calculation.brackets.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2">Détail par tranche:</h4>
-                    <div className="space-y-1 text-sm">
-                      {calculation.brackets.map((item, index) => (
-                        <div key={index} className="flex justify-between p-2 bg-background rounded">
-                          <span>
-                            {formatCurrency(item.bracket.min_amount)} - {item.bracket.max_amount ? formatCurrency(item.bracket.max_amount) : '∞'} ({item.bracket.rate}%)
-                          </span>
-                          <span className="font-medium">{formatCurrency(item.taxOnBracket)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">
+              Aucune donnée fiscale disponible
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Créez une dotation dans l'onglet "Dotations" pour voir les calculs fiscaux
+            </p>
           </CardContent>
         </Card>
       )}
@@ -520,28 +525,28 @@ export function ImpotsTab() {
         </div>
       )}
 
-      {/* Historique des simulations */}
+      {/* Historique des rapports */}
       <Card>
         <CardHeader>
-          <CardTitle>Historique des Simulations</CardTitle>
+          <CardTitle>Historique des Rapports Fiscaux</CardTitle>
           <CardDescription>
-            Simulations précédemment sauvegardées
+            Rapports précédemment sauvegardés
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {simulations.map((sim) => (
-              <div key={sim.id} className="flex items-center justify-between p-4 border rounded-lg">
+            {taxReports.map((report) => (
+              <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <p className="font-medium">{sim.tax_type} - {sim.period}</p>
-                    <Badge variant="outline">{sim.effective_rate.toFixed(1)}%</Badge>
+                    <p className="font-medium">{report.tax_type} - {report.period}</p>
+                    <Badge variant="outline">{report.effective_rate.toFixed(1)}%</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Base: {formatCurrency(sim.base_amount)} • Impôt: {formatCurrency(sim.calculated_tax)}
+                    Base: {formatCurrency(report.base_amount)} • Impôt: {formatCurrency(report.calculated_tax)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(sim.created_at).toLocaleDateString('fr-FR')}
+                    {new Date(report.created_at).toLocaleDateString('fr-FR')} par {report.created_by}
                   </p>
                 </div>
                 <div className="flex space-x-2">
@@ -554,12 +559,12 @@ export function ImpotsTab() {
                 </div>
               </div>
             ))}
-            {simulations.length === 0 && (
+            {taxReports.length === 0 && (
               <div className="text-center py-8">
-                <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg font-medium text-muted-foreground">Aucune simulation</p>
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">Aucun rapport</p>
                 <p className="text-sm text-muted-foreground">
-                  Vos simulations sauvegardées apparaîtront ici
+                  Les rapports sauvegardés apparaîtront ici
                 </p>
               </div>
             )}

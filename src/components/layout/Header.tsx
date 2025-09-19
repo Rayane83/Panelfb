@@ -1,12 +1,12 @@
 import { useAuth } from '../../hooks/useAuth'
-import { useTheme } from '../../hooks/useTheme.tsx'
+import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../ui/button'
 import { getCurrentWeek } from '../../lib/utils'
 import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Switch } from '../ui/switch'
-import { LogOut, User, Settings, Server, ChevronDown, Bell, Search, Moon, Sun, Camera, Save, Shield } from 'lucide-react'
+import { LogOut, User, Settings, Server, ChevronDown, Bell, Search, Moon, Sun, Camera, Save, Shield, X } from 'lucide-react'
 import { useState, useRef } from 'react'
 
 export function Header() {
@@ -20,6 +20,7 @@ export function Header() {
     avatar: user?.avatar || ''
   })
   const [isRefreshingRoles, setIsRefreshingRoles] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isAuthenticated) return null
@@ -71,12 +72,15 @@ export function Header() {
 
   const handleSaveProfile = async () => {
     try {
+      setIsSaving(true)
       await updateProfile(profileData)
       setShowProfileEdit(false)
       alert('Profil mis à jour avec succès !')
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error)
       alert('Erreur lors de la mise à jour du profil')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -101,315 +105,345 @@ export function Header() {
   }
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Left side - Logo and navigation */}
-          <div className="flex items-center space-x-6">
+    <>
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Left side - Logo and navigation */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg blur opacity-50"></div>
+                  <div className="relative p-2 bg-gradient-to-r from-[#5865F2] to-[#4752C4] rounded-lg shadow-lg">
+                    <Server className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-[#5865F2] to-[#4752C4] bg-clip-text text-transparent flex items-center space-x-2">
+                    <img 
+                      src="/logo.png" 
+                      alt="FlashbackFA" 
+                      className="h-6 w-6 object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                      }}
+                    />
+                    <span>FlashbackFA Enterprise</span>
+                  </h1>
+                  <p className="text-xs text-muted-foreground hidden sm:block">
+                    Management System
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quick info */}
+              <div className="hidden md:flex items-center space-x-4">
+                <Badge variant="outline" className="bg-muted/50">
+                  <Server className="h-3 w-3 mr-1" />
+                  {getCurrentWeek()}
+                </Badge>
+                <Badge variant="outline" className="bg-muted/50">
+                  {user?.currentGuild?.name || 'No Guild'}
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Right side - User menu and actions */}
             <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg blur opacity-50"></div>
-                <div className="relative p-2 bg-gradient-to-r from-[#5865F2] to-[#4752C4] rounded-lg shadow-lg">
-                  <Server className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-[#5865F2] to-[#4752C4] bg-clip-text text-transparent flex items-center space-x-2">
-                  <img 
-                    src="/logo.png" 
-                    alt="FlashbackFA" 
-                    className="h-6 w-6 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                    }}
-                  />
-                  <span>FlashbackFA Enterprise</span>
-                </h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  Management System
-                </p>
-              </div>
-            </div>
-            
-            {/* Quick info */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Badge variant="outline" className="bg-muted/50">
-                <Server className="h-3 w-3 mr-1" />
-                {getCurrentWeek()}
-              </Badge>
-              <Badge variant="outline" className="bg-muted/50">
-                {user?.currentGuild?.name || 'No Guild'}
-              </Badge>
-            </div>
-          </div>
-          
-          {/* Right side - User menu and actions */}
-          <div className="flex items-center space-x-4">
-            {/* Theme toggle */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleTheme}
-              className="hidden sm:flex"
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-
-            {/* Search button */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
-              <Search className="h-4 w-4" />
-            </Button>
-            
-            {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-4 w-4" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="text-[10px] text-white font-bold">3</span>
-              </div>
-            </Button>
-            
-            {/* User menu */}
-            <div className="relative">
-              <Button
-                variant="ghost"
-                className="flex items-center space-x-3 h-10 px-3 hover:bg-muted/50"
-                onClick={() => setShowUserMenu(!showUserMenu)}
+              {/* Theme toggle */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggleTheme}
+                className="hidden sm:flex hover:bg-muted/50"
+                title={`Passer en mode ${theme === 'dark' ? 'clair' : 'sombre'}`}
               >
-                <img
-                  src={getAvatarUrl()}
-                  alt={getDisplayName()}
-                  className="w-8 h-8 rounded-full ring-2 ring-primary/20"
-                />
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium">{getDisplayName()}</p>
-                  <p className="text-xs text-muted-foreground">#{user?.discriminator}</p>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+
+              {/* Search button */}
+              <Button variant="ghost" size="icon" className="hidden sm:flex hover:bg-muted/50">
+                <Search className="h-4 w-4" />
               </Button>
               
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-80 bg-background border rounded-lg shadow-lg z-50">
-                  <div className="p-4 border-b">
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={getAvatarUrl()}
-                        alt={getDisplayName()}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium">{getDisplayName()}</p>
-                        <p className="text-sm text-muted-foreground">{user?.email}</p>
-                        <Badge className={`mt-1 bg-gradient-to-r ${roleColors[user?.role || 'employee']} text-white border-0 text-xs`}>
-                          {roleLabels[user?.role || 'employee']} • Niveau {user?.roleLevel}
-                        </Badge>
-                        
-                        {/* Affichage des rôles par guilde */}
-                        {user?.allGuildRoles && user.allGuildRoles.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-xs text-muted-foreground font-medium">Rôles Discord:</p>
-                            {user.allGuildRoles.map((guildRole, index) => (
-                              <div key={index} className="text-xs">
-                                <span className="font-medium">{guildRole.guildName}:</span>
-                                <span className="ml-1 text-muted-foreground">
-                                  {guildRole.userRole.roleName} (IDs: {guildRole.roles.slice(0, 2).join(', ')}{guildRole.roles.length > 2 ? '...' : ''})
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+              {/* Notifications */}
+              <Button variant="ghost" size="icon" className="relative hover:bg-muted/50">
+                <Bell className="h-4 w-4" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-[10px] text-white font-bold">3</span>
+                </div>
+              </Button>
+              
+              {/* User menu */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-3 h-12 px-4 hover:bg-muted/50 rounded-xl"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                >
+                  <img
+                    src={getAvatarUrl()}
+                    alt={getDisplayName()}
+                    className="w-8 h-8 rounded-full ring-2 ring-primary/20 object-cover"
+                  />
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-medium">{getDisplayName()}</p>
+                    <p className="text-xs text-muted-foreground">#{user?.discriminator}</p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-80 bg-background border rounded-xl shadow-xl z-50 overflow-hidden">
+                    {/* Header du menu */}
+                    <div className="p-4 bg-gradient-to-r from-[#5865F2] to-[#4752C4] text-white">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={getAvatarUrl()}
+                          alt={getDisplayName()}
+                          className="w-12 h-12 rounded-full ring-2 ring-white/30 object-cover"
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold">{getDisplayName()}</p>
+                          <p className="text-sm text-white/80">{user?.username}#{user?.discriminator}</p>
+                          <Badge className={`mt-1 bg-gradient-to-r ${roleColors[user?.role || 'employee']} text-white border-0 text-xs`}>
+                            {roleLabels[user?.role || 'employee']} • Niveau {user?.roleLevel}
+                          </Badge>
+                        </div>
                       </div>
+                      
+                      {/* Affichage des rôles par guilde */}
+                      {user?.allGuildRoles && user.allGuildRoles.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs text-white/80 font-medium">Rôles Discord:</p>
+                          {user.allGuildRoles.slice(0, 2).map((guildRole, index) => (
+                            <div key={index} className="text-xs text-white/70">
+                              <span className="font-medium">{guildRole.guildName}:</span>
+                              <span className="ml-1">
+                                {guildRole.userRole.roleName}
+                              </span>
+                            </div>
+                          ))}
+                          {user.allGuildRoles.length > 2 && (
+                            <p className="text-xs text-white/60">+{user.allGuildRoles.length - 2} autres...</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Menu items */}
+                    <div className="p-2">
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start h-10 hover:bg-muted/50" 
+                        onClick={() => {
+                          setShowProfileEdit(true)
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        <User className="h-4 w-4 mr-3" />
+                        <span>Modifier mon profil</span>
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start h-10 hover:bg-muted/50"
+                        onClick={handleRefreshRoles}
+                        disabled={isRefreshingRoles}
+                      >
+                        <Shield className="h-4 w-4 mr-3" />
+                        <span>{isRefreshingRoles ? 'Actualisation...' : 'Actualiser les rôles'}</span>
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start h-10 hover:bg-muted/50"
+                        onClick={toggleTheme}
+                      >
+                        {theme === 'dark' ? <Sun className="h-4 w-4 mr-3" /> : <Moon className="h-4 w-4 mr-3" />}
+                        <span>Mode {theme === 'dark' ? 'clair' : 'sombre'}</span>
+                      </Button>
+                      
+                      {(user?.role === 'superviseur' || user?.role === 'superadmin') && (
+                        <Button variant="ghost" className="w-full justify-start h-10 hover:bg-muted/50" asChild>
+                          <a href="/staff">
+                            <Shield className="h-4 w-4 mr-3" />
+                            <span>Gestion Staff</span>
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Logout */}
+                    <div className="p-2 border-t bg-muted/30">
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start h-10 text-red-600 hover:text-red-700 hover:bg-red-50" 
+                        onClick={() => {
+                          setShowUserMenu(false)
+                          logout()
+                        }}
+                      >
+                        <LogOut className="h-4 w-4 mr-3" />
+                        <span>Se déconnecter</span>
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="p-2">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start" 
-                      size="sm"
-                      onClick={() => {
-                        setShowProfileEdit(true)
-                        setShowUserMenu(false)
-                      }}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Mon Profil
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start" 
-                      size="sm"
-                      onClick={handleRefreshRoles}
-                      disabled={isRefreshingRoles}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      {isRefreshingRoles ? 'Actualisation...' : 'Actualiser les rôles'}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start" 
-                      size="sm"
-                      onClick={toggleTheme}
-                    >
-                      {theme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-                      Mode {theme === 'dark' ? 'Clair' : 'Sombre'}
-                    </Button>
-                    {(user?.role === 'superviseur' || user?.role === 'superadmin') && (
-                      <Button variant="ghost" className="w-full justify-start" size="sm" asChild>
-                        <a href="/staff">
-                          <Shield className="h-4 w-4 mr-2" />
-                          Gestion Staff
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <div className="p-2 border-t">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" 
-                      size="sm"
-                      onClick={() => {
-                        setShowUserMenu(false)
-                        logout()
-                      }}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Se déconnecter
-                    </Button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      {/* Click outside to close menu */}
-      {showUserMenu && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowUserMenu(false)}
-        />
-      )}
+        
+        {/* Click outside to close menu */}
+        {showUserMenu && (
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setShowUserMenu(false)}
+          />
+        )}
+      </header>
 
       {/* Profile Edit Modal */}
       {showProfileEdit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-lg shadow-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">Modifier mon profil</h3>
+          <div className="bg-background rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            {/* Header du modal */}
+            <div className="p-6 bg-gradient-to-r from-[#5865F2] to-[#4752C4] text-white">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">Configuration du profil</h3>
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => setShowProfileEdit(false)}
+                  className="text-white hover:bg-white/20 rounded-full"
                 >
-                  ×
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-              
-              <div className="space-y-6">
-                {/* Avatar */}
-                <div className="text-center space-y-4">
-                  <div className="relative inline-block">
-                    <img
-                      src={getAvatarUrl()}
-                      alt="Avatar"
-                      className="w-24 h-24 rounded-full mx-auto"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="absolute bottom-0 right-0 rounded-full"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarChange}
+              <p className="text-sm text-white/80 mt-1">
+                Personnalisez votre profil et vos préférences
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Avatar section */}
+              <div className="text-center space-y-4">
+                <div className="relative inline-block">
+                  <img
+                    src={getAvatarUrl()}
+                    alt="Avatar"
+                    className="w-24 h-24 rounded-full mx-auto object-cover ring-4 ring-primary/20"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Cliquez sur l'icône pour changer votre photo
-                  </p>
-                </div>
-
-                {/* Name fields */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">Prénom</Label>
-                    <Input
-                      id="firstName"
-                      value={profileData.firstName}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
-                      placeholder="Votre prénom"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Nom</Label>
-                    <Input
-                      id="lastName"
-                      value={profileData.lastName}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
-                      placeholder="Votre nom"
-                    />
-                  </div>
-                </div>
-
-                {/* Theme toggle */}
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                    <div>
-                      <p className="font-medium">Mode sombre</p>
-                      <p className="text-sm text-muted-foreground">
-                        Basculer entre les thèmes clair et sombre
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={theme === 'dark'}
-                    onCheckedChange={toggleTheme}
-                  />
-                </div>
-
-                {/* Discord info */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Informations Discord</p>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <p>Username: {user?.username}#{user?.discriminator}</p>
-                    <p>Email: {user?.email}</p>
-                    <p>Rôle: {roleLabels[user?.role || 'employee']}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex space-x-3">
-                  <Button 
-                    onClick={handleSaveProfile} 
-                    className="flex-1"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute bottom-0 right-0 rounded-full shadow-lg bg-background"
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    Sauvegarder
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowProfileEdit(false)}
-                    className="flex-1"
-                  >
-                    Annuler
+                    <Camera className="h-4 w-4" />
                   </Button>
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cliquez sur l'icône pour changer votre photo (max 5MB)
+                </p>
+              </div>
+
+              {/* Name fields */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Prénom</Label>
+                  <Input
+                    id="firstName"
+                    value={profileData.firstName}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
+                    placeholder="Votre prénom"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Nom de famille</Label>
+                  <Input
+                    id="lastName"
+                    value={profileData.lastName}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                    placeholder="Votre nom"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              {/* Theme toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center space-x-3">
+                  {theme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
+                  <div>
+                    <p className="font-medium">Mode sombre</p>
+                    <p className="text-sm text-muted-foreground">
+                      Interface {theme === 'dark' ? 'sombre' : 'claire'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={theme === 'dark'}
+                  onCheckedChange={toggleTheme}
+                />
+              </div>
+
+              {/* Discord info */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-3 flex items-center">
+                  <Shield className="h-4 w-4 mr-2 text-primary" />
+                  Informations Discord
+                </p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Nom d'utilisateur:</span>
+                    <span className="font-mono">{user?.username}#{user?.discriminator}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rôle système:</span>
+                    <Badge className={`bg-gradient-to-r ${roleColors[user?.role || 'employee']} text-white border-0 text-xs`}>
+                      {roleLabels[user?.role || 'employee']}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Niveau d'accès:</span>
+                    <span className="font-medium">{user?.roleLevel}/7</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={handleSaveProfile} 
+                  className="flex-1 h-11"
+                  disabled={isSaving}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowProfileEdit(false)}
+                  className="flex-1 h-11"
+                >
+                  Annuler
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
