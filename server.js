@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const engine = require('ejs-mate');
 require('dotenv').config();
 
 const app = express();
@@ -37,6 +38,7 @@ app.use(session({
 // Configuration EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.engine('ejs', engine);
 
 // Mapping des rôles Discord
 const ROLE_MAPPING = {
