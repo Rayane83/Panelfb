@@ -14,7 +14,7 @@ Système d'**automatisation** basé sur **Python/Flask + HTML** :
 ### 1. Installation des dépendances
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ### 2. Configuration
