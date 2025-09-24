@@ -12,15 +12,32 @@ const PORT = process.env.PORT || 3000;
 
 // Configuration Supabase
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co',
-  process.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY
 );
+
+// Vérification de la configuration Supabase
+if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
+  console.error('❌ Variables d\'environnement Supabase manquantes:');
+  console.error('   - VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? '✅' : '❌');
+  console.error('   - VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? '✅' : '❌');
+  process.exit(1);
+}
 
 // Configuration Discord
 const DISCORD_CLIENT_ID = process.env.VITE_DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.VITE_DISCORD_CLIENT_SECRET;
 const DISCORD_REDIRECT_URI = process.env.VITE_DISCORD_REDIRECT_URI;
 const DISCORD_BOT_TOKEN = process.env.VITE_DISCORD_BOT_TOKEN;
+
+// Vérification de la configuration Discord
+if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET || !DISCORD_REDIRECT_URI) {
+  console.error('❌ Variables d\'environnement Discord manquantes:');
+  console.error('   - VITE_DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? '✅' : '❌');
+  console.error('   - VITE_DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? '✅' : '❌');
+  console.error('   - VITE_DISCORD_REDIRECT_URI:', DISCORD_REDIRECT_URI ? '✅' : '❌');
+  console.error('   - VITE_DISCORD_BOT_TOKEN:', DISCORD_BOT_TOKEN ? '✅' : '❌');
+}
 
 // Middleware
 app.use(cors());
@@ -405,6 +422,9 @@ app.use((req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${PORT}`);
   console.log(`📍 URL: http://localhost:${PORT}`);
+  console.log(`🔗 Supabase URL: ${process.env.VITE_SUPABASE_URL}`);
+  console.log(`🎮 Discord Client ID: ${DISCORD_CLIENT_ID}`);
+  console.log(`📁 Views directory: ${path.join(__dirname, 'views')}`);
 });
 
 // Gestion propre de l'arrêt
