@@ -4,6 +4,7 @@
   "description": "FlashbackFA Enterprise Management System",
   "main": "server.js",
   "scripts": {
+    "build": "echo 'No build step required for Node.js server application'",
     "start": "node server.js",
     "dev": "node server.js"
   },
