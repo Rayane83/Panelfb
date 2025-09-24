@@ -402,7 +402,24 @@ app.use((req, res) => {
 });
 
 // Démarrage du serveur
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${PORT}`);
   console.log(`📍 URL: http://localhost:${PORT}`);
+});
+
+// Gestion propre de l'arrêt
+process.on('SIGTERM', () => {
+  console.log('SIGTERM reçu, arrêt du serveur...');
+  server.close(() => {
+    console.log('Serveur arrêté proprement');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT reçu, arrêt du serveur...');
+  server.close(() => {
+    console.log('Serveur arrêté proprement');
+    process.exit(0);
+  });
 });

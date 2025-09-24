@@ -7,10 +7,16 @@
 </head>
 <body>
     <div id="app">
-        <p>This is a server-side rendered application. Please visit the application URL directly.</p>
+        <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+            <h1>FlashbackFA Enterprise</h1>
+            <p>Application serveur démarrée avec succès !</p>
+            <p>Redirection vers l'application...</p>
+        </div>
         <script>
             // Redirect to the main application
-            window.location.href = '/';
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
         </script>
     </div>
 </body>
