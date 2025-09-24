@@ -121,27 +121,18 @@ def determine_user_role(user_id, user_roles, is_owner, guild_id):
         return {'role': 'superadmin', 'role_level': 7, 'role_name': 'Fondateur'}
     
     if ROLE_IDS['STAFF'] and ROLE_IDS['STAFF'] in user_roles:
-        return {'role': 'superviseur', 'role_level': 6, 'role_name': 'Staff'}
-    
-    if ROLE_IDS['DOT_STAFF'] and ROLE_IDS['DOT_STAFF'] in user_roles:
-        return {'role': 'superviseur', 'role_level': 6, 'role_name': 'Staff DOT'}
-    
-    if ROLE_IDS['DOT'] and ROLE_IDS['DOT'] in user_roles:
-        return {'role': 'dot', 'role_level': 5, 'role_name': 'DOT'}
+        return {'role': 'staff', 'role_level': 3, 'role_name': 'Staff'}
     
     if ROLE_IDS['PATRON'] and ROLE_IDS['PATRON'] in user_roles:
-        return {'role': 'patron', 'role_level': 4, 'role_name': 'Patron'}
+        return {'role': 'patron', 'role_level': 2, 'role_name': 'Patron'}
     
     if ROLE_IDS['CO_PATRON'] and ROLE_IDS['CO_PATRON'] in user_roles:
-        return {'role': 'co_patron', 'role_level': 3, 'role_name': 'Co-Patron'}
+        return {'role': 'co_patron', 'role_level': 1, 'role_name': 'Co-Patron'}
     
     # Propriétaire de guilde (priorité plus basse que les rôles spécifiques)
     if is_owner:
-        if guild_id == DOT_GUILD_ID:
-            return {'role': 'dot', 'role_level': 5, 'role_name': 'DOT Propriétaire'}
-        return {'role': 'patron', 'role_level': 4, 'role_name': 'Patron Propriétaire'}
+        return {'role': 'patron', 'role_level': 2, 'role_name': 'Patron Propriétaire'}
     
-    return {'role': 'employee', 'role_level': 1, 'role_name': 'Employé'}
 
 def get_user_enterprises(user_id):
     """Récupère les entreprises de l'utilisateur"""
@@ -172,7 +163,15 @@ def require_permission(permission):
                 return redirect(url_for('auth_page'))
             
             user = session['user']
-            if not has_permission(user.get('role'), permission):
+            
+            # Vérifier les permissions du rôle principal
+            has_role_permission = has_permission(user.get('role'), permission)
+            
+            # Vérifier si c'est une permission superadmin
+            is_superadmin_permission = permission == 'superadmin'
+            has_superadmin_access = user.get('is_superadmin', False) and is_superadmin_permission
+            
+            if not has_role_permission and not has_superadmin_access:
                 flash('Vous n\'avez pas les permissions nécessaires.', 'error')
                 return redirect(url_for('dashboard'))
             
@@ -187,9 +186,7 @@ def has_permission(user_role, permission):
         'employee': ['dashboard'],
         'co_patron': ['dashboard', 'dotations', 'impots', 'blanchiment', 'archives', 'documents', 'comptabilite', 'salaires', 'qualifications'],
         'patron': ['dashboard', 'dotations', 'impots', 'blanchiment', 'archives', 'documents', 'comptabilite', 'salaires', 'qualifications', 'company_config'],
-        'dot': ['dashboard', 'impots', 'documents'],
-        'superviseur': ['dashboard', 'dotations', 'impots', 'blanchiment', 'archives', 'documents', 'comptabilite', 'salaires', 'qualifications', 'config_staff', 'company_config', 'superadmin'],
-        'superadmin': ['dashboard', 'dotations', 'impots', 'blanchiment', 'archives', 'documents', 'comptabilite', 'salaires', 'qualifications', 'config_staff', 'company_config', 'superadmin']
+        'staff': ['dashboard', 'dotations', 'impots', 'blanchiment', 'archives', 'documents', 'comptabilite', 'salaires', 'qualifications', 'config_staff', 'company_config']
     }
     
     return permission in permissions_matrix.get(user_role, [])
@@ -266,14 +263,19 @@ def auth_callback():
             return redirect(url_for('auth_page'))
         
         # Déterminer le rôle le plus élevé
-        highest_role = {'role': 'employee', 'role_level': 1, 'role_name': 'Employé'}
+        highest_role = {'role': 'employee', 'role_level': 0, 'role_name': 'Employé'}
         
         # Collecter tous les rôles de l'utilisateur dans toutes les guildes
         all_user_roles = []
+        is_superadmin = False
         
         for guild in configured_guilds:
             roles_data = DiscordAuth.get_user_roles_in_guild(discord_user['id'], guild['id'])
             all_user_roles.extend(roles_data['roles'])
+            
+            # Vérifier si l'utilisateur a le rôle SuperAdmin
+            if ROLE_IDS['SUPERADMIN'] and ROLE_IDS['SUPERADMIN'] in roles_data['roles']:
+                is_superadmin = True
             
             # Déterminer le rôle pour cette guilde
             role_info = determine_user_role(discord_user['id'], roles_data['roles'], guild['owner'], guild['id'])
@@ -281,10 +283,9 @@ def auth_callback():
             if role_info['role_level'] > highest_role['role_level']:
                 highest_role = role_info
         
-        # Vérification finale avec tous les rôles combinés (pour les rôles cross-guild comme superadmin)
-        final_role_check = determine_user_role(discord_user['id'], all_user_roles, False, None)
-        if final_role_check['role_level'] > highest_role['role_level']:
-            highest_role = final_role_check
+        # Vérifier SuperAdmin dans tous les rôles combinés
+        if ROLE_IDS['SUPERADMIN'] and ROLE_IDS['SUPERADMIN'] in all_user_roles:
+            is_superadmin = True
         
         # Créer l'objet utilisateur
         user_data = {
@@ -295,6 +296,7 @@ def auth_callback():
             'role': highest_role['role'],
             'role_level': highest_role['role_level'],
             'role_name': highest_role['role_name'],
+            'is_superadmin': is_superadmin,
             'guilds': configured_guilds
         }
         
@@ -500,7 +502,7 @@ def archives():
 
 @app.route('/staff')
 @require_auth
-@require_permission('config_staff')
+@require_permission('staff')
 def staff():
     user = session['user']
     
@@ -515,6 +517,11 @@ def staff():
 @require_permission('superadmin')
 def superadmin():
     user = session['user']
+    
+    # Vérifier explicitement le rôle superadmin
+    if not user.get('is_superadmin', False):
+        flash('Accès SuperAdmin requis.', 'error')
+        return redirect(url_for('dashboard'))
     
     # Récupérer toutes les données pour l'administration
     enterprises_response = supabase.table('enterprises').select('*').order('created_at', desc=True).execute()
