@@ -36,10 +36,9 @@ ROLE_IDS = {
     'PATRON': os.getenv('VITE_MAIN_GUILD_PATRON_ROLE_ID'),
     'CO_PATRON': os.getenv('VITE_MAIN_GUILD_COPATRON_ROLE_ID'),
     'DOT': os.getenv('VITE_DOT_GUILD_DOT_ROLE_ID'),
-    'DOT_STAFF': os.getenv('VITE_DOT_GUILD_STAFF_ROLE_ID')
+    'DOT_STAFF': os.getenv('VITE_DOT_GUILD_STAFF_ROLE_ID'),
+    'SUPERADMIN': os.getenv('VITE_SUPERADMIN_ROLE_ID')
 }
-
-FOUNDER_DISCORD_ID = '462716512252329996'
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -117,17 +116,10 @@ class DiscordAuth:
 def determine_user_role(user_id, user_roles, is_owner, guild_id):
     """Détermine le rôle d'un utilisateur basé sur ses rôles Discord"""
     
-    # Le fondateur est toujours superadmin
-    if user_id == FOUNDER_DISCORD_ID:
+    # Vérifier les rôles par priorité (du plus élevé au plus bas)
+    if ROLE_IDS['SUPERADMIN'] and ROLE_IDS['SUPERADMIN'] in user_roles:
         return {'role': 'superadmin', 'role_level': 7, 'role_name': 'Fondateur'}
     
-    # Propriétaire de guilde
-    if is_owner:
-        if guild_id == DOT_GUILD_ID:
-            return {'role': 'dot', 'role_level': 5, 'role_name': 'DOT'}
-        return {'role': 'patron', 'role_level': 4, 'role_name': 'Patron'}
-    
-    # Vérifier les rôles par priorité
     if ROLE_IDS['STAFF'] and ROLE_IDS['STAFF'] in user_roles:
         return {'role': 'superviseur', 'role_level': 6, 'role_name': 'Staff'}
     
@@ -142,6 +134,12 @@ def determine_user_role(user_id, user_roles, is_owner, guild_id):
     
     if ROLE_IDS['CO_PATRON'] and ROLE_IDS['CO_PATRON'] in user_roles:
         return {'role': 'co_patron', 'role_level': 3, 'role_name': 'Co-Patron'}
+    
+    # Propriétaire de guilde (priorité plus basse que les rôles spécifiques)
+    if is_owner:
+        if guild_id == DOT_GUILD_ID:
+            return {'role': 'dot', 'role_level': 5, 'role_name': 'DOT Propriétaire'}
+        return {'role': 'patron', 'role_level': 4, 'role_name': 'Patron Propriétaire'}
     
     return {'role': 'employee', 'role_level': 1, 'role_name': 'Employé'}
 
@@ -270,12 +268,23 @@ def auth_callback():
         # Déterminer le rôle le plus élevé
         highest_role = {'role': 'employee', 'role_level': 1, 'role_name': 'Employé'}
         
+        # Collecter tous les rôles de l'utilisateur dans toutes les guildes
+        all_user_roles = []
+        
         for guild in configured_guilds:
             roles_data = DiscordAuth.get_user_roles_in_guild(discord_user['id'], guild['id'])
+            all_user_roles.extend(roles_data['roles'])
+            
+            # Déterminer le rôle pour cette guilde
             role_info = determine_user_role(discord_user['id'], roles_data['roles'], guild['owner'], guild['id'])
             
             if role_info['role_level'] > highest_role['role_level']:
                 highest_role = role_info
+        
+        # Vérification finale avec tous les rôles combinés (pour les rôles cross-guild comme superadmin)
+        final_role_check = determine_user_role(discord_user['id'], all_user_roles, False, None)
+        if final_role_check['role_level'] > highest_role['role_level']:
+            highest_role = final_role_check
         
         # Créer l'objet utilisateur
         user_data = {

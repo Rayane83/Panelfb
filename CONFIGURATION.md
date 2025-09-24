@@ -48,14 +48,15 @@ VITE_APP_URL=https://monumental-gaufre-97d575.netlify.app
 3. **Modifiez le fichier `src/lib/discord.ts`** :
    ```typescript
    export const ROLE_MAPPING = {
-     'ID_ROLE_SUPERADMIN': 'superadmin',    // Ex: '987654321098765432'
-     'ID_ROLE_STAFF': 'staff',              // Ex: '987654321098765433'
-     'ID_ROLE_DOT': 'dot',                  // Ex: '987654321098765434'
-     'ID_ROLE_PATRON': 'patron',            // Ex: '987654321098765435'
-     'ID_ROLE_CO_PATRON': 'co_patron',      // Ex: '987654321098765436'
-     'ID_ROLE_EMPLOYEE': 'employee'         // Ex: '987654321098765437'
+     // Les rôles sont maintenant gérés automatiquement via les variables d'environnement
+     // Configurez simplement les IDs dans votre fichier .env
    }
    ```
+
+4. **Configurez le rôle SuperAdmin** :
+   - Créez un rôle "SuperAdmin" dans Discord
+   - Copiez son ID et ajoutez-le à `VITE_SUPERADMIN_ROLE_ID` dans votre `.env`
+   - Ce rôle peut être dans n'importe quelle guilde configurée
 
 ### ✅ 4. Inviter le Bot dans vos Serveurs
 
