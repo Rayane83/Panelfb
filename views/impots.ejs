@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculs Fiscaux - FlashbackFA Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg">
+                        <i data-lucide="receipt" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">Calculs Fiscaux</h1>
+                        <p class="text-xs text-gray-500">FlashbackFA Enterprise</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard" class="text-gray-600 hover:text-gray-700 p-2 rounded-md hover:bg-gray-50">
+                        <i data-lucide="home" class="h-5 w-5"></i>
+                    </a>
+                    <div class="flex items-center space-x-3">
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=128" 
+                             alt="<%= user.username %>" 
+                             class="w-8 h-8 rounded-full"
+                             onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div>
+                            <p class="text-sm font-medium"><%= user.username %></p>
+                            <p class="text-xs text-gray-500"><%= user.role %></p>
+                        </div>
+                    </div>
+                    <a href="/logout" class="text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50">
+                        <i data-lucide="log-out" class="h-5 w-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Header Section -->
+        <div class="bg-gradient-to-r from-red-600 to-orange-600 rounded-2xl p-8 text-white mb-8">
+            <h2 class="text-3xl font-bold mb-2">Calculs Fiscaux</h2>
+            <p class="text-red-100">Simulez et calculez les impôts de vos entreprises</p>
+        </div>
+
+        <!-- Tax Calculator -->
+        <div class="grid gap-6 lg:grid-cols-2 mb-8">
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <h3 class="text-lg font-semibold mb-4">Calculateur d'Impôts</h3>
+                <form class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Montant de base</label>
+                        <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type d'impôt</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                            <option>Impôt sur les sociétés</option>
+                            <option>TVA</option>
+                            <option>Taxe professionnelle</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Période</label>
+                        <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" placeholder="2024-01">
+                    </div>
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
+                        Calculer
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <h3 class="text-lg font-semibold mb-4">Résultat du Calcul</h3>
+                <div class="space-y-4">
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Montant de base</span>
+                            <span class="font-medium">€0.00</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Taux effectif</span>
+                            <span class="font-medium">0.00%</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-red-600 font-medium">Impôt calculé</span>
+                            <span class="font-bold text-red-600">€0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulations History -->
+        <div class="bg-white rounded-xl shadow-sm">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-semibold">Historique des Simulations</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entreprise</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Base</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impôt Calculé</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Taux</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <% if (simulations && simulations.length > 0) { %>
+                            <% simulations.forEach(function(simulation) { %>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <%= new Date(simulation.created_at).toLocaleDateString('fr-FR') %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= simulation.enterprises ? simulation.enterprises.name : 'N/A' %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <%= simulation.tax_type %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    €<%= simulation.base_amount %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                                    €<%= simulation.calculated_tax %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <%= simulation.effective_rate %>%
+                                </td>
+                            </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center">
+                                        <i data-lucide="receipt" class="h-12 w-12 text-gray-400 mb-4"></i>
+                                        <p class="text-gray-600">Aucune simulation trouvée</p>
+                                        <p class="text-sm text-gray-500">Utilisez le calculateur pour créer votre première simulation</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
