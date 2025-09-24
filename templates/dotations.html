@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}Dotations - FlashbackFA Enterprise{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight">Gestion des Dotations</h2>
+            <p class="text-gray-600">Saisie et calcul automatique des dotations avec import Excel/CSV</p>
+        </div>
+        <div class="flex space-x-2">
+            {% if user.role in ['patron', 'co_patron'] %}
+            <form method="POST" action="{{ url_for('create_dotation') }}" class="inline">
+                <button type="submit" class="btn-primary flex items-center space-x-2">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>Nouvelle Dotation</span>
+                </button>
+            </form>
+            {% endif %}
+            <button onclick="location.reload()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+                <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                <span>Actualiser</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sélecteur de dotation -->
+    {% if dotations %}
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Sélection de Dotation</h3>
+        <div class="grid gap-3 md:grid-cols-3">
+            {% for dotation in dotations %}
+            <div class="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer" 
+                 onclick="selectDotation('{{ dotation.id }}')">
+                <div class="text-left">
+                    <p class="font-medium">Période {{ dotation.period }}</p>
+                    <p class="text-xs text-gray-500">
+                        {{ dotation.total_ca|currency }} • {{ dotation.status }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        {{ dotation.created_at|date_fr }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Statistiques -->
+    <div class="grid gap-4 md:grid-cols-5">
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">CA Total</h4>
+                <i data-lucide="calculator" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold" id="total-ca">0 €</div>
+            <p class="text-xs text-gray-500">Chiffre d'affaires</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Salaires</h4>
+                <i data-lucide="file-text" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold" id="total-salaires">0 €</div>
+            <p class="text-xs text-gray-500">Total mensuel</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Primes</h4>
+                <i data-lucide="plus" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold" id="total-primes">0 €</div>
+            <p class="text-xs text-gray-500">Total calculé</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Dépenses</h4>
+                <i data-lucide="file-text" class="h-4 w-4 text-red-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-red-600" id="total-depenses">0 €</div>
+            <p class="text-xs text-gray-500">Déductibles</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Employés</h4>
+                <i data-lucide="users" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold" id="total-employees">0</div>
+            <p class="text-xs text-gray-500">Actifs</p>
+        </div>
+    </div>
+
+    {% if user.role in ['patron', 'co_patron'] %}
+    <!-- Import de données -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Import de Données Employés</h3>
+        <p class="text-sm text-gray-600 mb-4">
+            Collez vos données Excel/CSV au format : Nom;RUN;FACTURE;VENTE
+        </p>
+        <form id="import-form" class="space-y-4">
+            <textarea id="paste-data" 
+                      class="input min-h-32 font-mono text-sm" 
+                      placeholder="Jean Dupont;15000;8000;5000&#10;Marie Martin;20000;12000;8000"></textarea>
+            <button type="button" onclick="importData()" class="btn-primary">
+                <i data-lucide="upload" class="h-4 w-4 mr-2"></i>
+                Importer les Données
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Table des employés -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Table des Employés</h3>
+        <div class="overflow-x-auto">
+            <table class="table" id="employees-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Grade</th>
+                        <th>RUN</th>
+                        <th>FACTURE</th>
+                        <th>VENTE</th>
+                        <th>CA TOTAL</th>
+                        <th>Salaire</th>
+                        <th>Prime</th>
+                        {% if user.role in ['patron', 'co_patron'] %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="employees-tbody">
+                    <!-- Les lignes seront ajoutées dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+        
+        {% if user.role in ['patron', 'co_patron'] %}
+        <div class="flex space-x-2 mt-4">
+            <button onclick="addEmployee()" class="btn-primary">
+                <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
+                Ajouter Employé
+            </button>
+            <button onclick="saveDotation()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                Enregistrer
+            </button>
+            <button onclick="archiveDotation()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <i data-lucide="archive" class="h-4 w-4 mr-2"></i>
+                Archiver
+            </button>
+            <button onclick="exportDotation()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <i data-lucide="download" class="h-4 w-4 mr-2"></i>
+                Export Excel
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Résumé financier -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Résumé Financier</h3>
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                    <span class="font-medium text-green-800">CA Total</span>
+                    <span class="font-bold text-green-600" id="summary-ca">0 €</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span class="font-medium text-blue-800">Total Salaires</span>
+                    <span class="font-bold text-blue-600" id="summary-salaires">0 €</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                    <span class="font-medium text-purple-800">Total Primes</span>
+                    <span class="font-bold text-purple-600" id="summary-primes">0 €</span>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                    <span class="font-medium text-red-800">Dépenses</span>
+                    <span class="font-bold text-red-600" id="summary-depenses">0 €</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                    <span class="font-medium text-orange-800">Retraits</span>
+                    <span class="font-bold text-orange-600" id="summary-retraits">0 €</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
+                    <span class="font-bold text-gray-800">Bénéfice Net</span>
+                    <span class="font-bold text-gray-600" id="summary-benefice">0 €</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let employees = [];
+    let currentDotationId = null;
+
+    // Fonctions de calcul
+    function calculateSalary(caTotal, grade) {
+        const baseRates = { 'Junior': 2500, 'Senior': 3500, 'Manager': 4500, 'Director': 6000 };
+        return baseRates[grade] || 2500;
+    }
+
+    function calculatePrime(caTotal, grade) {
+        const primeRates = { 'Junior': 0.05, 'Senior': 0.08, 'Manager': 0.12, 'Director': 0.15 };
+        return Math.round(caTotal * (primeRates[grade] || 0.05));
+    }
+
+    function addEmployee() {
+        const newEmployee = {
+            id: Date.now().toString(),
+            nom: '',
+            grade: 'Junior',
+            run: 0,
+            facture: 0,
+            vente: 0,
+            caTotal: 0,
+            salaire: 2500,
+            prime: 0
+        };
+        
+        employees.push(newEmployee);
+        renderEmployeesTable();
+        updateSummary();
+    }
+
+    function removeEmployee(index) {
+        employees.splice(index, 1);
+        renderEmployeesTable();
+        updateSummary();
+    }
+
+    function updateEmployee(index, field, value) {
+        const employee = employees[index];
+        
+        if (field === 'nom' || field === 'grade') {
+            employee[field] = value;
+            if (field === 'grade') {
+                employee.salaire = calculateSalary(employee.caTotal, value);
+                employee.prime = calculatePrime(employee.caTotal, value);
+            }
+        } else if (['run', 'facture', 'vente'].includes(field)) {
+            const numValue = parseFloat(value.replace(',', '.')) || 0;
+            if (numValue >= 0) {
+                employee[field] = numValue;
+                employee.caTotal = employee.run + employee.facture + employee.vente;
+                employee.salaire = calculateSalary(employee.caTotal, employee.grade);
+                employee.prime = calculatePrime(employee.caTotal, employee.grade);
+            }
+        }
+        
+        renderEmployeesTable();
+        updateSummary();
+    }
+
+    function renderEmployeesTable() {
+        const tbody = document.getElementById('employees-tbody');
+        tbody.innerHTML = '';
+        
+        employees.forEach((employee, index) => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+            row.innerHTML = `
+                <td><input type="text" class="input" value="${employee.nom}" onchange="updateEmployee(${index}, 'nom', this.value)"></td>
+                <td>
+                    <select class="input" onchange="updateEmployee(${index}, 'grade', this.value)">
+                        <option value="Junior" ${employee.grade === 'Junior' ? 'selected' : ''}>Junior</option>
+                        <option value="Senior" ${employee.grade === 'Senior' ? 'selected' : ''}>Senior</option>
+                        <option value="Manager" ${employee.grade === 'Manager' ? 'selected' : ''}>Manager</option>
+                        <option value="Director" ${employee.grade === 'Director' ? 'selected' : ''}>Director</option>
+                    </select>
+                </td>
+                <td><input type="number" class="input" value="${employee.run}" onchange="updateEmployee(${index}, 'run', this.value)"></td>
+                <td><input type="number" class="input" value="${employee.facture}" onchange="updateEmployee(${index}, 'facture', this.value)"></td>
+                <td><input type="number" class="input" value="${employee.vente}" onchange="updateEmployee(${index}, 'vente', this.value)"></td>
+                <td><input type="text" class="input bg-gray-100" value="${formatCurrency(employee.caTotal)}" readonly></td>
+                <td><input type="text" class="input bg-gray-100" value="${formatCurrency(employee.salaire)}" readonly></td>
+                <td><input type="text" class="input bg-gray-100" value="${formatCurrency(employee.prime)}" readonly></td>
+                {% if user.role in ['patron', 'co_patron'] %}
+                <td>
+                    <button onclick="removeEmployee(${index})" class="text-red-600 hover:text-red-700 p-1">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </td>
+                {% endif %}
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Réinitialiser les icônes Lucide
+        lucide.createIcons();
+    }
+
+    function updateSummary() {
+        const totalCA = employees.reduce((sum, emp) => sum + emp.caTotal, 0);
+        const totalSalaires = employees.reduce((sum, emp) => sum + emp.salaire, 0);
+        const totalPrimes = employees.reduce((sum, emp) => sum + emp.prime, 0);
+        
+        document.getElementById('total-ca').textContent = formatCurrency(totalCA);
+        document.getElementById('total-salaires').textContent = formatCurrency(totalSalaires);
+        document.getElementById('total-primes').textContent = formatCurrency(totalPrimes);
+        document.getElementById('total-employees').textContent = employees.length;
+        
+        document.getElementById('summary-ca').textContent = formatCurrency(totalCA);
+        document.getElementById('summary-salaires').textContent = formatCurrency(totalSalaires);
+        document.getElementById('summary-primes').textContent = formatCurrency(totalPrimes);
+    }
+
+    function importData() {
+        const pasteData = document.getElementById('paste-data').value;
+        if (!pasteData.trim()) return;
+        
+        try {
+            const lines = pasteData.trim().split('\n');
+            const newEmployees = [];
+            
+            for (const line of lines) {
+                const parts = line.split(/[;\t,]/).map(p => p.trim());
+                if (parts.length >= 4) {
+                    const nom = parts[0];
+                    const run = parseFloat(parts[1]) || 0;
+                    const facture = parseFloat(parts[2]) || 0;
+                    const vente = parseFloat(parts[3]) || 0;
+                    const caTotal = run + facture + vente;
+                    
+                    newEmployees.push({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        nom,
+                        grade: 'Junior',
+                        run,
+                        facture,
+                        vente,
+                        caTotal,
+                        salaire: calculateSalary(caTotal, 'Junior'),
+                        prime: calculatePrime(caTotal, 'Junior')
+                    });
+                }
+            }
+            
+            employees.push(...newEmployees);
+            renderEmployeesTable();
+            updateSummary();
+            
+            document.getElementById('paste-data').value = '';
+            
+            // Afficher un message de succès
+            showToast('success', `${newEmployees.length} ligne(s) importée(s) avec succès`);
+        } catch (error) {
+            console.error('Erreur lors de l\'importation:', error);
+            showToast('error', 'Erreur lors de l\'importation des données');
+        }
+    }
+
+    function saveDotation() {
+        if (!currentDotationId) {
+            showToast('error', 'Aucune dotation sélectionnée');
+            return;
+        }
+        
+        // Préparer les données pour l'envoi
+        const formData = new FormData();
+        formData.append('employees', JSON.stringify(employees));
+        
+        fetch(`/dotations/${currentDotationId}/save`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', 'Dotation sauvegardée avec succès');
+            } else {
+                showToast('error', 'Erreur lors de la sauvegarde');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Erreur lors de la sauvegarde');
+        });
+    }
+
+    function exportDotation() {
+        const exportData = employees.map(emp => ({
+            Nom: emp.nom,
+            Grade: emp.grade,
+            RUN: emp.run,
+            FACTURE: emp.facture,
+            VENTE: emp.vente,
+            'CA TOTAL': emp.caTotal,
+            Salaire: emp.salaire,
+            Prime: emp.prime
+        }));
+        
+        // Créer et télécharger le fichier CSV
+        const csv = convertToCSV(exportData);
+        downloadCSV(csv, `dotations_${new Date().toISOString().split('T')[0]}.csv`);
+        
+        showToast('success', 'Export généré avec succès');
+    }
+
+    function convertToCSV(data) {
+        const headers = Object.keys(data[0]);
+        const csvContent = [
+            headers.join(';'),
+            ...data.map(row => headers.map(header => row[header]).join(';'))
+        ].join('\n');
+        return csvContent;
+    }
+
+    function downloadCSV(csv, filename) {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 fade-in ${
+            type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+            'bg-red-100 text-red-800 border border-red-200'
+        }`;
+        toast.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-triangle'}" class="h-4 w-4"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        renderEmployeesTable();
+        updateSummary();
+    });
+</script>
+{% endblock %}
