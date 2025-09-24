@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FlashbackFA Enterprise{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Welcome section -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+        <div class="absolute inset-0 bg-black/10"></div>
+        <div class="relative z-10">
+            <div class="flex items-center space-x-4 mb-4">
+                <img src="https://cdn.discordapp.com/avatars/{{ user.id }}/{{ user.avatar }}.png?size=128" 
+                     alt="{{ user.username }}" 
+                     class="w-16 h-16 rounded-full ring-4 ring-white/20"
+                     onerror="this.src='https://cdn.discordapp.com/embed/avatars/{{ user.discriminator|int % 5 }}.png'">
+                <div>
+                    <h1 class="text-3xl font-bold">Bienvenue, {{ user.username }} !</h1>
+                    <p class="text-white/80 text-lg">
+                        {% if user.role in ['superviseur', 'superadmin'] %}
+                            Administration Système
+                        {% else %}
+                            Tableau de bord Entreprise
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <span class="badge bg-white/20 text-white border border-white/30">
+                    {{ user.role_name }}
+                </span>
+                <span class="badge bg-white/20 text-white border border-white/30">
+                    Niveau {{ user.role_level }}
+                </span>
+                <span class="badge bg-white/20 text-white border border-white/30">
+                    {{ moment().format('DD/MM/YYYY') }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques principales -->
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg">
+                    <i data-lucide="building" class="h-6 w-6 text-white"></i>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ stats.total_enterprises }}</div>
+                    <p class="text-sm text-gray-500">Entreprises</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">Entreprises gérées</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
+                    <i data-lucide="users" class="h-6 w-6 text-white"></i>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ stats.total_employees }}</div>
+                    <p class="text-sm text-gray-500">Employés</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">Effectif total</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 shadow-lg">
+                    <i data-lucide="trending-up" class="h-6 w-6 text-white"></i>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ stats.total_ca|currency }}</div>
+                    <p class="text-sm text-gray-500">CA Total</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">Chiffre d'affaires</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 shadow-lg">
+                    <i data-lucide="file-text" class="h-6 w-6 text-white"></i>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ stats.total_documents }}</div>
+                    <p class="text-sm text-gray-500">Documents</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">Fichiers stockés</p>
+        </div>
+    </div>
+
+    <!-- Entreprises de l'utilisateur -->
+    {% if enterprises %}
+    <div class="card">
+        <h3 class="text-xl font-bold mb-4 flex items-center space-x-2">
+            <i data-lucide="building" class="h-5 w-5 text-blue-600"></i>
+            <span>Vos Entreprises</span>
+        </h3>
+        <div class="grid gap-4 md:grid-cols-2">
+            {% for enterprise in enterprises %}
+            <div class="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="font-medium">{{ enterprise.name }}</h4>
+                    <span class="badge badge-info">{{ enterprise.type }}</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3">{{ enterprise.description or 'Aucune description' }}</p>
+                <div class="flex items-center justify-between text-sm text-gray-500">
+                    <span>Guild: {{ enterprise.guild_id }}</span>
+                    <span>Créée le {{ enterprise.created_at|date_fr }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="card text-center py-12">
+        <i data-lucide="building" class="h-12 w-12 text-gray-400 mx-auto mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-600 mb-2">Aucune entreprise trouvée</h3>
+        <p class="text-sm text-gray-500">
+            {% if user.role in ['superviseur', 'superadmin'] %}
+                Aucune entreprise n'est encore enregistrée dans le système.
+            {% else %}
+                Vous n'êtes associé à aucune entreprise pour le moment.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Actions rapides -->
+    <div class="grid gap-6 md:grid-cols-3">
+        {% if user.role in ['patron', 'co_patron'] %}
+        <div class="card border-green-200 bg-green-50">
+            <h4 class="font-medium text-green-800 mb-2 flex items-center space-x-2">
+                <i data-lucide="file-text" class="h-4 w-4"></i>
+                <span>Dotations</span>
+            </h4>
+            <p class="text-sm text-green-700 mb-4">Gérez vos dotations et calculs salariaux</p>
+            <a href="{{ url_for('dotations') }}" class="btn-primary w-full text-center block">
+                Accéder aux Dotations
+            </a>
+        </div>
+        {% endif %}
+
+        {% if user.role in ['patron', 'co_patron', 'dot', 'superviseur'] %}
+        <div class="card border-blue-200 bg-blue-50">
+            <h4 class="font-medium text-blue-800 mb-2 flex items-center space-x-2">
+                <i data-lucide="calculator" class="h-4 w-4"></i>
+                <span>Impôts</span>
+            </h4>
+            <p class="text-sm text-blue-700 mb-4">Calculs fiscaux et simulations</p>
+            <a href="{{ url_for('impots') }}" class="btn-primary w-full text-center block">
+                Accéder aux Impôts
+            </a>
+        </div>
+        {% endif %}
+
+        {% if user.role in ['superviseur', 'superadmin'] %}
+        <div class="card border-purple-200 bg-purple-50">
+            <h4 class="font-medium text-purple-800 mb-2 flex items-center space-x-2">
+                <i data-lucide="shield" class="h-4 w-4"></i>
+                <span>Administration</span>
+            </h4>
+            <p class="text-sm text-purple-700 mb-4">Gestion système et configuration</p>
+            <a href="{{ url_for('superadmin') }}" class="btn-primary w-full text-center block">
+                Accéder à l'Admin
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Actualisation automatique des statistiques toutes les 30 secondes
+    setInterval(async () => {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Mettre à jour les statistiques sans recharger la page
+                document.querySelector('[data-stat="enterprises"]').textContent = data.stats.total_enterprises;
+                document.querySelector('[data-stat="employees"]').textContent = data.stats.total_employees;
+                document.querySelector('[data-stat="ca"]').textContent = formatCurrency(data.stats.total_ca);
+                document.querySelector('[data-stat="documents"]').textContent = data.stats.total_documents;
+            }
+        } catch (error) {
+            console.error('Error updating stats:', error);
+        }
+    }, 30000);
+</script>
+{% endblock %}

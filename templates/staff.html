@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion Staff - FlashbackFA Enterprise{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight">Gestion Staff</h2>
+            <p class="text-gray-600">Gestion du blanchiment et suivi des dotations par entreprise</p>
+        </div>
+        <button onclick="location.reload()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+            <span>Actualiser</span>
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="grid gap-4 md:grid-cols-4">
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Total Entreprises</h4>
+                <i data-lucide="building-2" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold">{{ enterprises|length }}</div>
+            <p class="text-xs text-gray-500">Entreprises enregistrées</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Blanchiment Activé</h4>
+                <i data-lucide="shield" class="h-4 w-4 text-green-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-green-600" id="blanchiment-count">
+                {{ enterprises|selectattr('settings.blanchiment_enabled')|list|length }}
+            </div>
+            <p class="text-xs text-gray-500">Entreprises autorisées</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Dotations Récentes</h4>
+                <i data-lucide="check-circle" class="h-4 w-4 text-green-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-green-600">0</div>
+            <p class="text-xs text-gray-500">À jour</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">En Retard</h4>
+                <i data-lucide="alert-triangle" class="h-4 w-4 text-red-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-red-600">0</div>
+            <p class="text-xs text-gray-500">Nécessitent attention</p>
+        </div>
+    </div>
+
+    <!-- Recherche -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Recherche d'Entreprises</h3>
+        <p class="text-sm text-gray-600 mb-4">Recherchez par nom, Guild ID ou type d'entreprise</p>
+        <div class="relative">
+            <i data-lucide="search" class="absolute left-3 top-3 h-4 w-4 text-gray-400"></i>
+            <input type="text" 
+                   id="search-input"
+                   class="input pl-9" 
+                   placeholder="Rechercher une entreprise..."
+                   onkeyup="filterEnterprises()">
+        </div>
+    </div>
+
+    <!-- Liste des entreprises -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Gestion des Entreprises</h3>
+        <p class="text-sm text-gray-600 mb-6">Activez/désactivez le blanchiment et suivez le statut des dotations</p>
+        
+        <div class="space-y-4" id="enterprises-list">
+            {% for enterprise in enterprises %}
+            <div class="enterprise-item flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                 data-name="{{ enterprise.name|lower }}"
+                 data-guild="{{ enterprise.guild_id }}"
+                 data-type="{{ enterprise.type|lower }}">
+                <div class="flex-1 space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="building-2" class="h-5 w-5 text-gray-500"></i>
+                        <div>
+                            <p class="font-medium">{{ enterprise.name }}</p>
+                            <div class="flex items-center space-x-2 mt-1">
+                                {% if enterprise.settings and enterprise.settings.blanchiment_enabled %}
+                                <span class="badge badge-success">
+                                    <i data-lucide="shield" class="h-3 w-3 mr-1"></i>
+                                    Blanchiment Activé
+                                </span>
+                                {% else %}
+                                <span class="badge badge-error">
+                                    <i data-lucide="x-circle" class="h-3 w-3 mr-1"></i>
+                                    Blanchiment Désactivé
+                                </span>
+                                {% endif %}
+                                <span class="badge border border-gray-300 text-gray-700">{{ enterprise.type }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-6 text-sm text-gray-500 ml-8">
+                        <span>Guild: {{ enterprise.guild_id }}</span>
+                        <span>Créée le: {{ enterprise.created_at|date_fr }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <label for="blanchiment-{{ enterprise.id }}" class="text-sm">Blanchiment</label>
+                        <input type="checkbox" 
+                               id="blanchiment-{{ enterprise.id }}"
+                               class="toggle-switch"
+                               {% if enterprise.settings and enterprise.settings.blanchiment_enabled %}checked{% endif %}
+                               onchange="toggleBlanchiment('{{ enterprise.id }}', this.checked)">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if not enterprises %}
+        <div class="text-center py-8">
+            <i data-lucide="building-2" class="h-12 w-12 text-gray-400 mx-auto mb-4"></i>
+            <p class="text-lg font-medium text-gray-600">Aucune entreprise</p>
+            <p class="text-sm text-gray-500">Les entreprises apparaîtront ici une fois créées</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="grid gap-4 md:grid-cols-2">
+        <div class="card border-green-200 bg-green-50">
+            <h4 class="font-medium text-green-800 mb-2">Actions Rapides</h4>
+            <p class="text-sm text-green-700 mb-4">Gestion en lot des autorisations</p>
+            <div class="space-y-2">
+                <button onclick="toggleAllBlanchiment(true)" class="w-full px-4 py-2 border border-green-300 rounded-lg hover:bg-green-100 flex items-center justify-center space-x-2">
+                    <i data-lucide="check-circle" class="h-4 w-4"></i>
+                    <span>Activer Tout</span>
+                </button>
+                <button onclick="toggleAllBlanchiment(false)" class="w-full px-4 py-2 border border-green-300 rounded-lg hover:bg-green-100 flex items-center justify-center space-x-2">
+                    <i data-lucide="x-circle" class="h-4 w-4"></i>
+                    <span>Désactiver Tout</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card border-blue-200 bg-blue-50">
+            <h4 class="font-medium text-blue-800 mb-2">Suivi des Dotations</h4>
+            <p class="text-sm text-blue-700 mb-4">Statuts et alertes</p>
+            <div class="space-y-2 text-sm text-blue-800">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="check-circle" class="h-4 w-4 text-green-600"></i>
+                    <span>Envoyée: Dotation reçue dans les temps (≤30 jours)</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="alert-triangle" class="h-4 w-4 text-yellow-600"></i>
+                    <span>Non envoyée: Aucune dotation reçue</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="x-circle" class="h-4 w-4 text-red-600"></i>
+                    <span>En retard: Plus de 30 jours sans dotation</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterEnterprises() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const enterprises = document.querySelectorAll('.enterprise-item');
+        
+        enterprises.forEach(enterprise => {
+            const name = enterprise.dataset.name;
+            const guild = enterprise.dataset.guild;
+            const type = enterprise.dataset.type;
+            
+            const matches = name.includes(searchTerm) || 
+                          guild.includes(searchTerm) || 
+                          type.includes(searchTerm);
+            
+            enterprise.style.display = matches ? 'flex' : 'none';
+        });
+    }
+
+    async function toggleBlanchiment(enterpriseId, enabled) {
+        try {
+            const response = await apiCall(`/api/enterprises/${enterpriseId}/blanchiment`, 'PUT', {
+                enabled: enabled
+            });
+            
+            if (response.success) {
+                showToast('success', `Blanchiment ${enabled ? 'activé' : 'désactivé'} avec succès`);
+                
+                // Mettre à jour le compteur
+                const currentCount = parseInt(document.getElementById('blanchiment-count').textContent);
+                document.getElementById('blanchiment-count').textContent = enabled ? currentCount + 1 : currentCount - 1;
+            } else {
+                showToast('error', 'Erreur lors de la modification');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('error', 'Erreur lors de la modification');
+        }
+    }
+
+    function toggleAllBlanchiment(enable) {
+        const action = enable ? 'activer' : 'désactiver';
+        if (confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} le blanchiment pour toutes les entreprises ?`)) {
+            const checkboxes = document.querySelectorAll('.toggle-switch');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked !== enable) {
+                    checkbox.checked = enable;
+                    const enterpriseId = checkbox.id.replace('blanchiment-', '');
+                    toggleBlanchiment(enterpriseId, enable);
+                }
+            });
+        }
+    }
+
+    function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 fade-in ${
+            type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+            'bg-red-100 text-red-800 border border-red-200'
+        }`;
+        toast.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-triangle'}" class="h-4 w-4"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}
