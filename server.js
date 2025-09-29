@@ -12,32 +12,15 @@ const PORT = process.env.PORT || 3000;
 
 // Configuration Supabase
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co',
+  process.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
 );
-
-// Vérification de la configuration Supabase
-if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
-  console.error('❌ Variables d\'environnement Supabase manquantes:');
-  console.error('   - VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? '✅' : '❌');
-  console.error('   - VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? '✅' : '❌');
-  process.exit(1);
-}
 
 // Configuration Discord
 const DISCORD_CLIENT_ID = process.env.VITE_DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.VITE_DISCORD_CLIENT_SECRET;
 const DISCORD_REDIRECT_URI = process.env.VITE_DISCORD_REDIRECT_URI;
 const DISCORD_BOT_TOKEN = process.env.VITE_DISCORD_BOT_TOKEN;
-
-// Vérification de la configuration Discord
-if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET || !DISCORD_REDIRECT_URI) {
-  console.error('❌ Variables d\'environnement Discord manquantes:');
-  console.error('   - VITE_DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? '✅' : '❌');
-  console.error('   - VITE_DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? '✅' : '❌');
-  console.error('   - VITE_DISCORD_REDIRECT_URI:', DISCORD_REDIRECT_URI ? '✅' : '❌');
-  console.error('   - VITE_DISCORD_BOT_TOKEN:', DISCORD_BOT_TOKEN ? '✅' : '❌');
-}
 
 // Middleware
 app.use(cors());
@@ -53,7 +36,7 @@ app.use(session({
 
 // Configuration EJS
 app.set('view engine', 'ejs');
-app.set('views', path.resolve(__dirname, 'views'));
+app.set('views', path.join(__dirname, 'views'));
 
 // Mapping des rôles Discord
 const ROLE_MAPPING = {
@@ -418,45 +401,8 @@ app.use((req, res) => {
   });
 });
 
-// Gestion des conflits de port
-function startServer(port) {
-  const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${port}`);
-    console.log(`📍 URL: http://localhost:${port}`);
-    console.log(`🔗 Supabase URL: ${process.env.VITE_SUPABASE_URL}`);
-    console.log(`🎮 Discord Client ID: ${DISCORD_CLIENT_ID}`);
-    console.log(`📁 Views directory: ${path.join(__dirname, 'views')}`);
-  });
-
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`⚠️  Port ${port} occupé, tentative sur le port ${port + 1}...`);
-      startServer(port + 1);
-    } else {
-      console.error('Erreur serveur:', err);
-      process.exit(1);
-    }
-  });
-
-  // Gestion propre de l'arrêt
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM reçu, arrêt du serveur...');
-    server.close(() => {
-      console.log('Serveur arrêté proprement');
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', () => {
-    console.log('SIGINT reçu, arrêt du serveur...');
-    server.close(() => {
-      console.log('Serveur arrêté proprement');
-      process.exit(0);
-    });
-  });
-
-  return server;
-}
-
-// Démarrage du serveur avec gestion des conflits de port
-startServer(PORT);
+// Démarrage du serveur
+app.listen(PORT, () => {
+  console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${PORT}`);
+  console.log(`📍 URL: http://localhost:${PORT}`);
+});

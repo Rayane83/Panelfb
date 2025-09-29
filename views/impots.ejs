@@ -1,4 +1,4 @@
-<%- include('base', { title: title, user: user, body: `
+<% include('base', { title: title, user: user }, function(body) { %>
 <div class="py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- En-tête -->
@@ -140,6 +140,15 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <% if (simulation.details) { %>
+                            <div class="mt-4 bg-gray-50 rounded-lg p-3">
+                                <div class="text-sm text-gray-600">
+                                    <strong>Détails du calcul:</strong>
+                                    <pre class="mt-1 whitespace-pre-wrap"><%= JSON.stringify(simulation.details, null, 2) %></pre>
+                                </div>
+                            </div>
+                            <% } %>
                         </div>
                     </li>
                     <% }); %>
@@ -151,6 +160,12 @@
                             <p class="mt-1 text-sm text-gray-500">
                                 Commencez par effectuer votre première simulation fiscale.
                             </p>
+                            <div class="mt-6">
+                                <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i data-lucide="calculator" class="h-4 w-4 mr-2"></i>
+                                    Nouvelle Simulation
+                                </button>
+                            </div>
                         </div>
                     </li>
                 <% } %>
@@ -282,4 +297,4 @@ document.getElementById('calculate-btn').addEventListener('click', function() {
     document.getElementById('calculation-result').classList.remove('hidden');
 });
 </script>
-` }) %>
+<% }) %>
