@@ -17,7 +17,7 @@ import {
   DollarSign,
   FileText,
   Archive,
-  Shuffle,
+  Shuffle
   Calculator
 } from 'lucide-react'
 
@@ -122,14 +122,14 @@ export function DashboardTab() {
           documentsCount: documents.length,
           archivesCount: archives.length,
           blanchimentCount: blanchimentOps.length,
-          lastActivity: enterprise.updated_at || enterprise.created_at,
-          maxEmployeeSalary: 5000,
-          maxBossSalary: 8000,
-          maxEmployeeBonus: 2500,
-          maxBossBonus: 4000,
-          taxRate: 7,
-          wealthTax: 2,
-          netProfit: totalCA - totalSalaries
+          lastActivity: enterprise.updated_at,
+          maxEmployeeSalary: 0,
+          maxBossSalary: 0,
+          maxEmployeeBonus: 0,
+          maxBossBonus: 0,
+          taxRate: 0,
+          wealthTax: 0,
+          netProfit: totalCA - totalSalaries - totalBonuses
         })
       }
 
@@ -142,7 +142,10 @@ export function DashboardTab() {
   }
 
   const getAvatarUrl = () => {
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`
+    if (user?.avatar) {
+      return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`
+    }
+    return `https://cdn.discordapp.com/embed/avatars/${parseInt(user?.discriminator || '0') % 5}.png`
   }
 
   if (isLoading) {

@@ -35,27 +35,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshUserData = async (userData: User) => {
     try {
-      // Simulation d'entreprises pour l'utilisateur
-      const mockEnterprises = [
-        {
-          id: '1',
-          guild_id: userData.guilds[0]?.id || 'unknown',
-          name: 'Mon Entreprise',
-          type: 'SARL',
-          description: 'Entreprise de test',
-          owner_discord_id: userData.id,
-          settings: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]
+      // Créer ou mettre à jour l'utilisateur dans Supabase
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('discord_id', userData.id)
+        .single()
 
-      const updatedUser = { ...userData, enterprises: mockEnterprises }
+      if (!existingUser) {
+        // Créer l'utilisateur
+        await supabase.from('users').insert({
+          discord_id: userData.id,
+          username: userData.username,
+          discriminator: userData.discriminator,
+          avatar: userData.avatar,
+          email: userData.email,
+          role: userData.role,
+          role_level: userData.roleLevel
+        })
+      } else {
+        // Mettre à jour l'utilisateur
+        await supabase.from('users').update({
+          username: userData.username,
+          discriminator: userData.discriminator,
+          avatar: userData.avatar,
+          email: userData.email,
+          role: userData.role,
+          role_level: userData.roleLevel,
+          last_login: new Date().toISOString()
+        }).eq('discord_id', userData.id)
+      }
+
+      // Récupérer les entreprises de l'utilisateur
+      const { data: enterprises } = await supabase
+        .from('enterprises')
+        .select('*')
+        .or(`owner_discord_id.eq.${userData.id},guild_id.in.(${userData.guilds.map(g => g.id).join(',')})`)
+
+      // Mettre à jour les données utilisateur avec les entreprises
+      const updatedUser = {
+        ...userData,
+        enterprises: enterprises || []
+      }
+
       setUser(updatedUser)
       localStorage.setItem('discord_user', JSON.stringify(updatedUser))
     } catch (error) {
       console.error('Error refreshing user data:', error)
-      setUser(userData)
+      setUser(userData) // Fallback aux données locales
     }
   }
   useEffect(() => {
