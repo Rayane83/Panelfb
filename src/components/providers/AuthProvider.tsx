@@ -35,15 +35,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshUserData = async (userData: User) => {
     try {
-      // Récupérer les entreprises depuis Supabase
-      const { data: enterprises, error } = await supabase
-        .from('enterprises')
-        .select('*')
-        .or(`owner_discord_id.eq.${userData.id},guild_id.in.(${userData.guilds.map(g => g.id).join(',')})`)
+      // Simulation d'entreprises pour l'utilisateur
+      const mockEnterprises = [
+        {
+          id: '1',
+          guild_id: userData.guilds[0]?.id || 'unknown',
+          name: 'Mon Entreprise',
+          type: 'SARL',
+          description: 'Entreprise de test',
+          owner_discord_id: userData.id,
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ]
 
-      const userEnterprises = enterprises || []
-
-      const updatedUser = { ...userData, enterprises: userEnterprises }
+      const updatedUser = { ...userData, enterprises: mockEnterprises }
       setUser(updatedUser)
       localStorage.setItem('discord_user', JSON.stringify(updatedUser))
     } catch (error) {
@@ -51,7 +58,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(userData)
     }
   }
-
   useEffect(() => {
     // Gérer le callback OAuth
     const handleOAuthCallback = async () => {
@@ -81,13 +87,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             guild.id === import.meta.env.VITE_MAIN_GUILD_ID || 
             guild.id === import.meta.env.VITE_DOT_GUILD_ID
           )
-
-          if (configuredGuilds.length === 0) {
-            alert('Vous n\'êtes membre d\'aucune guilde autorisée. Accès refusé.')
-            window.history.replaceState({}, '', '/auth')
-            setIsLoading(false)
-            return
-          }
           
           const processedGuilds = configuredGuilds.map(guild => ({
             id: guild.id,
@@ -98,16 +97,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             roles: [] // Les rôles seront récupérés par le bot
           }))
           
-          // Déterminer le rôle le plus élevé en temps réel via le bot
-          const highestRole = await DiscordAuth.refreshUserRoles(discordUser.id)
-          
-          // Vérifier si l'utilisateur a au moins un rôle autorisé
-          if (highestRole.roleLevel < 1) {
-            alert('Vous n\'avez pas les permissions nécessaires pour accéder à cette application.')
-            window.history.replaceState({}, '', '/auth')
-            setIsLoading(false)
-            return
-          }
+          // Déterminer le rôle le plus élevé parmi toutes les guildes configurées
+          const highestRole = await getHighestRoleFromAllGuilds(discordUser.id, configuredGuilds)
           
           const userData: User = {
             id: discordUser.id,
@@ -115,8 +106,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             discriminator: discordUser.discriminator,
             avatar: discordUser.avatar,
             email: discordUser.email,
-            firstName: '',
-            lastName: '',
             guilds: processedGuilds,
             currentGuild: processedGuilds[0],
             role: highestRole.role as UserRole,
@@ -163,7 +152,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     localStorage.removeItem('discord_user')
-    localStorage.removeItem('user_profile')
     setUser(null)
     // Rediriger vers la page d'auth sans rechargement
     window.history.pushState({}, '', '/auth')
@@ -181,72 +169,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const updateProfile = async (profileData: { firstName: string; lastName: string; avatar: string }) => {
-    if (!user) return
-
-    try {
-      const updatedUser = {
-        ...user,
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        avatar: profileData.avatar
-      }
-
-      setUser(updatedUser)
-      localStorage.setItem('discord_user', JSON.stringify(updatedUser))
-      localStorage.setItem('user_profile', JSON.stringify(profileData))
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      throw error
-    }
-  }
-
-  const refreshRoles = async () => {
-    if (!user) return
-
-    try {
-      // Récupérer les rôles en temps réel depuis Discord
-      const roleData = await DiscordAuth.refreshUserRoles(user.id)
-      
-      const updatedUser = {
-        ...user,
-        role: roleData.role as UserRole,
-        roleLevel: roleData.roleLevel,
-        allGuildRoles: roleData.allGuildRoles
-      }
-
-      setUser(updatedUser)
-      localStorage.setItem('discord_user', JSON.stringify(updatedUser))
-    } catch (error) {
-      console.error('Error refreshing roles:', error)
-      throw error
-    }
-  }
-
   const hasPermission = (permission: string): boolean => {
     return user?.roleLevel ? user.roleLevel >= 3 : false
   }
-
-  // Charger le profil sauvegardé au démarrage
-  useEffect(() => {
-    if (user) {
-      const savedProfile = localStorage.getItem('user_profile')
-      if (savedProfile) {
-        try {
-          const profileData = JSON.parse(savedProfile)
-          const updatedUser = {
-            ...user,
-            firstName: profileData.firstName,
-            lastName: profileData.lastName,
-            avatar: profileData.avatar || user.avatar
-          }
-          setUser(updatedUser)
-        } catch (error) {
-          console.error('Error loading saved profile:', error)
-        }
-      }
-    }
-  }, [user?.id])
 
   return (
     <AuthContext.Provider
@@ -258,8 +183,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         logout,
         switchGuild,
         hasPermission,
-        updateProfile,
-        refreshRoles,
       }}
     >
       {children}
