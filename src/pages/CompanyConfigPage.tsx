@@ -2,17 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
-import { 
-  Building, 
-  Users, 
-  Settings, 
-  Save, 
-  Upload, 
-  Download,
-  Plus,
-  Trash2,
-  Edit
-} from 'lucide-react'
+import { Building, Users, Settings, Save, Upload, Download, Plus, Trash2, FileEdit as Edit } from 'lucide-react'
 
 export function CompanyConfigPage() {
   const [companyInfo, setCompanyInfo] = useState({
