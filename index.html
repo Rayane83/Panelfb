@@ -1,23 +1,790 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlashbackFA Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --border: 214.3 31.8% 91.4%;
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #5865F2 0%, #4752C4 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(88, 101, 242, 0.3);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .hidden { display: none; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app">
-        <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-            <h1>FlashbackFA Enterprise</h1>
-            <p>Application serveur démarrée avec succès !</p>
-            <p>Redirection vers l'application...</p>
+    <!-- Page d'authentification -->
+    <div id="auth-page" class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+        <!-- Background effects -->
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%239C92AC%22 fill-opacity=%220.05%22%3E%3Ccircle cx=%2230%22 cy=%2230%22 r=%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+        
+        <!-- Animated background elements -->
+        <div class="absolute top-20 left-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+
+        <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+            <div class="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+                
+                <!-- Left side - Branding and features -->
+                <div class="space-y-8 text-center lg:text-left">
+                    <div class="space-y-4">
+                        <div class="flex justify-center lg:justify-start">
+                            <div class="relative">
+                                <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                                <div class="relative p-4 bg-white/10 rounded-full backdrop-blur border border-white/20">
+                                    <i data-lucide="shield" class="h-16 w-16 text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <h1 class="text-5xl lg:text-6xl font-bold text-white leading-tight">
+                                FlashbackFA
+                                <span class="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Entreprise</span>
+                            </h1>
+                            <p class="text-xl text-slate-300 max-w-lg mx-auto lg:mx-0">
+                                Automatisation des fiches d'impôts, export DOT, blanchiment et gestion salariale
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Features grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass rounded-xl p-4">
+                            <i data-lucide="users" class="h-8 w-8 text-purple-400 mb-2"></i>
+                            <h3 class="font-semibold text-white text-sm">Gestion d'équipe</h3>
+                            <p class="text-xs text-slate-400 mt-1">Gérez vos employés et leurs rôles</p>
+                        </div>
+                        <div class="glass rounded-xl p-4">
+                            <i data-lucide="shield" class="h-8 w-8 text-purple-400 mb-2"></i>
+                            <h3 class="font-semibold text-white text-sm">Sécurité avancée</h3>
+                            <p class="text-xs text-slate-400 mt-1">Authentification Discord sécurisée</p>
+                        </div>
+                        <div class="glass rounded-xl p-4">
+                            <i data-lucide="zap" class="h-8 w-8 text-purple-400 mb-2"></i>
+                            <h3 class="font-semibold text-white text-sm">Performance</h3>
+                            <p class="text-xs text-slate-400 mt-1">Interface rapide et réactive</p>
+                        </div>
+                        <div class="glass rounded-xl p-4">
+                            <i data-lucide="globe" class="h-8 w-8 text-purple-400 mb-2"></i>
+                            <h3 class="font-semibold text-white text-sm">Multi-entreprises</h3>
+                            <p class="text-xs text-slate-400 mt-1">Gérez plusieurs entreprises</p>
+                        </div>
+                    </div>
+
+                    <!-- Role hierarchy preview -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="sparkles" class="h-5 w-5 text-yellow-400"></i>
+                            Hiérarchie des rôles
+                        </h3>
+                        <div class="flex flex-wrap gap-2 justify-center lg:justify-start">
+                            <div class="px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r from-red-500 to-pink-500 shadow-lg">
+                                Fondateur
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r from-purple-500 to-indigo-500 shadow-lg">
+                                Staff
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg">
+                                DOT
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 shadow-lg">
+                                Patron
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-800 border border-slate-700">
+                                +3 autres
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right side - Login form -->
+                <div class="flex justify-center lg:justify-end">
+                    <div class="w-full max-w-md">
+                        <div class="glass border-white/20 shadow-2xl rounded-2xl p-8">
+                            <div class="text-center space-y-4 mb-6">
+                                <div class="flex justify-center">
+                                    <div class="p-3 bg-gradient-to-r from-[#5865F2] to-[#4752C4] rounded-full shadow-lg">
+                                        <i data-lucide="shield" class="h-8 w-8 text-white"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <h2 class="text-2xl font-bold text-white">Authentification</h2>
+                                    <p class="text-slate-300">
+                                        Connectez-vous avec votre compte Discord pour accéder au système
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Benefits -->
+                            <div class="space-y-3 mb-6">
+                                <div class="flex items-center space-x-3 text-sm text-slate-300">
+                                    <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span>Accès basé sur vos rôles Discord réels</span>
+                                </div>
+                                <div class="flex items-center space-x-3 text-sm text-slate-300">
+                                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                    <span>Bot Discord pour récupération des rôles</span>
+                                </div>
+                                <div class="flex items-center space-x-3 text-sm text-slate-300">
+                                    <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                    <span>Synchronisation automatique</span>
+                                </div>
+                            </div>
+
+                            <!-- Role badges -->
+                            <div class="space-y-3 mb-6">
+                                <p class="text-sm font-medium text-slate-300">
+                                    Niveaux d'accès disponibles:
+                                </p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-red-500 to-pink-500 text-center">
+                                        Fondateur
+                                    </div>
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-purple-500 to-indigo-500 text-center">
+                                        Staff
+                                    </div>
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-500 text-center">
+                                        DOT
+                                    </div>
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 text-center">
+                                        Patron
+                                    </div>
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 text-center">
+                                        Co-Patron
+                                    </div>
+                                    <div class="px-2 py-1 rounded text-xs font-medium text-white bg-gradient-to-r from-gray-400 to-gray-500 text-center">
+                                        Employé
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Login button -->
+                            <button onclick="handleLogin()" class="btn-primary w-full h-12 text-white font-semibold shadow-lg">
+                                <i data-lucide="log-in" class="h-5 w-5 mr-3"></i>
+                                <span>Se connecter avec Discord</span>
+                            </button>
+                            
+                            <div id="config-warning" class="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg backdrop-blur">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <p class="text-sm text-red-400 font-medium">Configuration requise</p>
+                                </div>
+                                <p class="text-xs text-red-300 mt-1">
+                                    CLIENT_ID, CLIENT_SECRET et BOT_TOKEN Discord requis pour fonctionner.
+                                </p>
+                            </div>
+
+                            <!-- Security notice -->
+                            <div class="text-center space-y-2 mt-6">
+                                <div class="flex items-center justify-center space-x-2 text-xs text-slate-400">
+                                    <i data-lucide="shield" class="h-3 w-3"></i>
+                                    <span>Connexion sécurisée SSL/TLS</span>
+                                </div>
+                                <p class="text-xs text-slate-500">
+                                    Vous serez redirigé vers Discord pour autoriser l'application
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="text-center mt-6">
+                            <p class="text-slate-400 text-sm">FlashbackFA Enterprise Management System</p>
+                            <p class="text-slate-500 text-xs mt-1">Version 2.0 • Powered by JavaScript & Discord API</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <script>
-            // Redirect to the main application
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 1000);
-        </script>
     </div>
+
+    <!-- Dashboard page (hidden by default) -->
+    <div id="dashboard-page" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo et navigation -->
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="relative">
+                                <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg blur opacity-50"></div>
+                                <div class="relative p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                                    <i data-lucide="server" class="h-6 w-6 text-white"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                    FlashbackFA Enterprise
+                                </h1>
+                                <p class="text-xs text-gray-500">Management System</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Navigation -->
+                        <nav class="hidden md:flex space-x-4">
+                            <button onclick="showPage('dashboard')" class="nav-link active px-3 py-2 rounded-md text-sm font-medium text-blue-600 bg-blue-50">
+                                Dashboard
+                            </button>
+                            <button onclick="showPage('dotations')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">
+                                Dotations
+                            </button>
+                            <button onclick="showPage('impots')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">
+                                Impôts
+                            </button>
+                            <button onclick="showPage('staff')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">
+                                Staff
+                            </button>
+                            <button onclick="showPage('superadmin')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-red-700 hover:text-red-600 hover:bg-red-50">
+                                🔧 SuperAdmin
+                            </button>
+                        </nav>
+                    </div>
+                    
+                    <!-- Menu utilisateur -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-3">
+                            <img id="user-avatar" src="" alt="" class="w-8 h-8 rounded-full ring-2 ring-blue-500/20">
+                            <div class="hidden sm:block">
+                                <p id="user-name" class="text-sm font-medium"></p>
+                                <p id="user-role" class="text-xs text-gray-500"></p>
+                            </div>
+                        </div>
+                        <button onclick="handleLogout()" class="text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors">
+                            <i data-lucide="log-out" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Dashboard content -->
+            <div id="dashboard-content" class="page-content">
+                <div class="space-y-8">
+                    <!-- Welcome section -->
+                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+                        <div class="absolute inset-0 bg-black/10"></div>
+                        <div class="relative z-10">
+                            <div class="flex items-center space-x-4 mb-4">
+                                <img id="welcome-avatar" src="" alt="" class="w-16 h-16 rounded-full ring-4 ring-white/20">
+                                <div>
+                                    <h1 id="welcome-text" class="text-3xl font-bold">Bienvenue !</h1>
+                                    <p class="text-white/80 text-lg">Tableau de bord Discord Enterprise Management</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats grid -->
+                    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg">
+                                    <i data-lucide="building" class="h-6 w-6 text-white"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold">3</div>
+                                    <p class="text-sm text-gray-500">Entreprises</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400">Entreprises gérées</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
+                                    <i data-lucide="users" class="h-6 w-6 text-white"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold">45</div>
+                                    <p class="text-sm text-gray-500">Employés</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400">Effectif total</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 shadow-lg">
+                                    <i data-lucide="trending-up" class="h-6 w-6 text-white"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold">€125,000</div>
+                                    <p class="text-sm text-gray-500">CA Total</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400">Chiffre d'affaires</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 shadow-lg">
+                                    <i data-lucide="file-text" class="h-6 w-6 text-white"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold">28</div>
+                                    <p class="text-sm text-gray-500">Documents</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400">Fichiers stockés</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="grid gap-6 md:grid-cols-3">
+                        <div class="bg-white rounded-xl p-6 shadow-lg border border-green-200 bg-green-50">
+                            <h4 class="font-medium text-green-800 mb-2 flex items-center space-x-2">
+                                <i data-lucide="file-text" class="h-4 w-4"></i>
+                                <span>Dotations</span>
+                            </h4>
+                            <p class="text-sm text-green-700 mb-4">Gérez vos dotations et calculs salariaux</p>
+                            <button onclick="showPage('dotations')" class="btn-primary w-full">
+                                Accéder aux Dotations
+                            </button>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border border-blue-200 bg-blue-50">
+                            <h4 class="font-medium text-blue-800 mb-2 flex items-center space-x-2">
+                                <i data-lucide="calculator" class="h-4 w-4"></i>
+                                <span>Impôts</span>
+                            </h4>
+                            <p class="text-sm text-blue-700 mb-4">Calculs fiscaux et simulations</p>
+                            <button onclick="showPage('impots')" class="btn-primary w-full">
+                                Accéder aux Impôts
+                            </button>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border border-purple-200 bg-purple-50">
+                            <h4 class="font-medium text-purple-800 mb-2 flex items-center space-x-2">
+                                <i data-lucide="shield" class="h-4 w-4"></i>
+                                <span>Administration</span>
+                            </h4>
+                            <p class="text-sm text-purple-700 mb-4">Gestion système et configuration</p>
+                            <button onclick="showPage('superadmin')" class="btn-primary w-full">
+                                Accéder à l'Admin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dotations content -->
+            <div id="dotations-content" class="page-content hidden">
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-3xl font-bold tracking-tight">Gestion des Dotations</h2>
+                            <p class="text-gray-600">Saisie et calcul automatique des dotations avec import Excel/CSV</p>
+                        </div>
+                        <button class="btn-primary">
+                            <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
+                            Nouvelle Dotation
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid gap-4 md:grid-cols-4">
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-medium text-gray-600">CA Total</h4>
+                                <i data-lucide="calculator" class="h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <div class="text-2xl font-bold">€85,000</div>
+                            <p class="text-xs text-gray-500">Chiffre d'affaires</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-medium text-gray-600">Salaires</h4>
+                                <i data-lucide="file-text" class="h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <div class="text-2xl font-bold">€12,500</div>
+                            <p class="text-xs text-gray-500">Total mensuel</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-medium text-gray-600">Primes</h4>
+                                <i data-lucide="plus" class="h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <div class="text-2xl font-bold">€4,250</div>
+                            <p class="text-xs text-gray-500">Total calculé</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-lg border">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-medium text-gray-600">Employés</h4>
+                                <i data-lucide="users" class="h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <div class="text-2xl font-bold">8</div>
+                            <p class="text-xs text-gray-500">Actifs</p>
+                        </div>
+                    </div>
+
+                    <!-- Dotations table -->
+                    <div class="bg-white rounded-xl shadow-lg border p-6">
+                        <h3 class="text-lg font-semibold mb-4">Dotations Récentes</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 border rounded-lg">
+                                <div>
+                                    <p class="font-medium">Dotation Janvier 2024</p>
+                                    <p class="text-sm text-gray-500">CA: €85,000 • Salaires: €12,500</p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Validé</span>
+                                    <button class="text-blue-600 hover:text-blue-700">
+                                        <i data-lucide="eye" class="h-4 w-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Impots content -->
+            <div id="impots-content" class="page-content hidden">
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-3xl font-bold tracking-tight">Gestion Fiscale</h2>
+                        <p class="text-gray-600">Consultation des barèmes et simulation d'impôts</p>
+                    </div>
+
+                    <!-- Tax calculator -->
+                    <div class="bg-white rounded-xl shadow-lg border p-6">
+                        <h3 class="text-lg font-semibold mb-4">Calculateur Fiscal</h3>
+                        <div class="grid gap-4 md:grid-cols-3 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Base de calcul (€)</label>
+                                <input type="number" id="tax-base" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="50000">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Période</label>
+                                <select id="tax-period" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="mensuel">Mensuel</option>
+                                    <option value="trimestriel">Trimestriel</option>
+                                    <option value="annuel">Annuel</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                                <select id="tax-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="IS">Impôt sur les Sociétés</option>
+                                    <option value="richesse">Impôt sur la Fortune</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="calculateTax()" class="btn-primary w-full">
+                            <i data-lucide="calculator" class="h-4 w-4 mr-2"></i>
+                            Calculer la Simulation
+                        </button>
+                        
+                        <div id="tax-result" class="hidden mt-6 p-4 bg-gray-50 rounded-lg">
+                            <div class="grid gap-4 md:grid-cols-3">
+                                <div class="text-center">
+                                    <div id="calculated-tax" class="text-2xl font-bold text-red-600">€0</div>
+                                    <p class="text-sm text-gray-500">Impôt calculé</p>
+                                </div>
+                                <div class="text-center">
+                                    <div id="effective-rate" class="text-2xl font-bold">0%</div>
+                                    <p class="text-sm text-gray-500">Taux effectif</p>
+                                </div>
+                                <div class="text-center">
+                                    <div id="net-amount" class="text-2xl font-bold text-green-600">€0</div>
+                                    <p class="text-sm text-gray-500">Montant net</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff content -->
+            <div id="staff-content" class="page-content hidden">
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-3xl font-bold tracking-tight">Gestion Staff</h2>
+                        <p class="text-gray-600">Gestion des employés et activation du blanchiment</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-lg border p-6">
+                        <h3 class="text-lg font-semibold mb-4">Entreprises et Blanchiment</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 border rounded-lg">
+                                <div>
+                                    <p class="font-medium">Tech Corp</p>
+                                    <p class="text-sm text-gray-500">Guild: 123456789 • 15 employés</p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Blanchiment Activé</span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SuperAdmin content -->
+            <div id="superadmin-content" class="page-content hidden">
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-3xl font-bold tracking-tight text-red-600">Administration Système</h2>
+                        <p class="text-gray-600">Configuration et gestion avancée du système</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-lg border p-6">
+                        <h3 class="text-lg font-semibold mb-4">Configuration Discord</h3>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Client ID</label>
+                                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" value="••••••••••••5678" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Bot Token</label>
+                                <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" value="••••••••••••••••" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Configuration Discord
+        const DISCORD_CONFIG = {
+            CLIENT_ID: '1402231031804723210',
+            REDIRECT_URI: 'https://flashbackfa-entreprise.fr/auth/callback',
+            SCOPES: 'identify email guilds'
+        };
+
+        // État de l'application
+        let currentUser = null;
+        let currentPage = 'dashboard';
+
+        // Gestion de l'authentification
+        function handleLogin() {
+            const authUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CONFIG.CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_CONFIG.REDIRECT_URI)}&response_type=code&scope=${DISCORD_CONFIG.SCOPES}`;
+            window.location.href = authUrl;
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('discord_user');
+            showAuthPage();
+        }
+
+        // Gestion des pages
+        function showAuthPage() {
+            document.getElementById('auth-page').classList.remove('hidden');
+            document.getElementById('dashboard-page').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('auth-page').classList.add('hidden');
+            document.getElementById('dashboard-page').classList.remove('hidden');
+        }
+
+        function showPage(pageName) {
+            // Cacher tous les contenus
+            document.querySelectorAll('.page-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Désactiver tous les liens de navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active', 'text-blue-600', 'bg-blue-50');
+                link.classList.add('text-gray-700');
+            });
+            
+            // Afficher le contenu sélectionné
+            document.getElementById(pageName + '-content').classList.remove('hidden');
+            
+            // Activer le lien de navigation
+            event.target.classList.add('active', 'text-blue-600', 'bg-blue-50');
+            event.target.classList.remove('text-gray-700');
+            
+            currentPage = pageName;
+        }
+
+        // Calculateur fiscal
+        function calculateTax() {
+            const base = parseFloat(document.getElementById('tax-base').value) || 0;
+            const type = document.getElementById('tax-type').value;
+            
+            if (base <= 0) {
+                alert('Veuillez saisir un montant valide');
+                return;
+            }
+            
+            let tax = 0;
+            
+            if (type === 'IS') {
+                // Barème IS
+                if (base <= 42500) {
+                    tax = base * 0.15;
+                } else if (base <= 250000) {
+                    tax = 42500 * 0.15 + (base - 42500) * 0.25;
+                } else {
+                    tax = 42500 * 0.15 + (250000 - 42500) * 0.25 + (base - 250000) * 0.31;
+                }
+            } else {
+                // Barème richesse
+                if (base <= 800000) {
+                    tax = 0;
+                } else if (base <= 1300000) {
+                    tax = (base - 800000) * 0.005;
+                } else {
+                    tax = 500000 * 0.005 + (base - 1300000) * 0.007;
+                }
+            }
+            
+            const effectiveRate = (tax / base) * 100;
+            const netAmount = base - tax;
+            
+            document.getElementById('calculated-tax').textContent = formatCurrency(tax);
+            document.getElementById('effective-rate').textContent = effectiveRate.toFixed(2) + '%';
+            document.getElementById('net-amount').textContent = formatCurrency(netAmount);
+            document.getElementById('tax-result').classList.remove('hidden');
+        }
+
+        // Utilitaires
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        // Gestion du callback OAuth
+        function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            
+            if (error) {
+                console.error('OAuth error:', error);
+                showAuthPage();
+                return;
+            }
+            
+            if (code) {
+                // Simuler l'authentification réussie
+                currentUser = {
+                    id: '123456789',
+                    username: 'TestUser',
+                    discriminator: '1234',
+                    avatar: null,
+                    role: 'patron'
+                };
+                
+                localStorage.setItem('discord_user', JSON.stringify(currentUser));
+                
+                // Mettre à jour l'interface
+                updateUserInterface();
+                showDashboard();
+                
+                // Nettoyer l'URL
+                window.history.replaceState({}, '', '/');
+            }
+        }
+
+        function updateUserInterface() {
+            if (currentUser) {
+                const avatarUrl = currentUser.avatar 
+                    ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`
+                    : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUser.discriminator) % 5}.png`;
+                
+                document.getElementById('user-avatar').src = avatarUrl;
+                document.getElementById('user-name').textContent = currentUser.username;
+                document.getElementById('user-role').textContent = currentUser.role;
+                
+                document.getElementById('welcome-avatar').src = avatarUrl;
+                document.getElementById('welcome-text').textContent = `Bienvenue, ${currentUser.username} !`;
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser les icônes Lucide
+            lucide.createIcons();
+            
+            // Vérifier si l'utilisateur est déjà connecté
+            const savedUser = localStorage.getItem('discord_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUserInterface();
+                showDashboard();
+            } else {
+                // Vérifier si c'est un callback OAuth
+                if (window.location.search.includes('code=')) {
+                    handleOAuthCallback();
+                } else {
+                    showAuthPage();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
