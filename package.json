@@ -2,10 +2,10 @@
   "name": "flashbackfa-enterprise",
   "version": "1.0.0",
   "description": "FlashbackFA Enterprise Management System",
-  "main": "server.js",
+  "main": "index.html",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
     "build": "npm install",
     "postinstall": "echo 'Installation completed'"
   },
