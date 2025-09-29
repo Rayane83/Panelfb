@@ -1,151 +1,76 @@
 # FlashbackFA Enterprise Management System
 
-## 🎯 **Architecture Mise à Jour**
+## 🎯 **Objectif Principal**
 
-Système d'**automatisation** basé sur **Python/Flask + HTML** :
-- ✅ **Backend Python** avec Flask
-- ✅ **Templates HTML** avec Jinja2
-- ✅ **JavaScript minimal** (uniquement pour l'interactivité)
-- ✅ **Authentification Discord OAuth**
-- ✅ **Base de données Supabase**
+Système d'**automatisation** pour :
+- ✅ **Remplissage automatique des fiches d'impôts**
+- ✅ **Export des données vers le DOT**
+- ✅ **Gestion des fiches de blanchiment**
+- ✅ **Calcul et gestion des salaires d'entreprises**
 
-## 🚀 **Installation et Démarrage**
+## Configuration Discord OAuth
 
-### 1. Installation des dépendances
+### 1. Configuration Discord Developer Portal
 
-```bash
-python3 -m pip install -r requirements.txt
+1. Allez sur https://discord.com/developers/applications
+2. Créez une nouvelle application ou sélectionnez une existante
+3. **Créez un Bot** - Dans l'onglet "Bot" :
+   - Cliquez sur "Add Bot"
+   - Copiez le **Bot Token** (gardez-le secret !)
+   - Activez les **Privileged Gateway Intents** : Server Members Intent
+4. **Pour OAuth2** - Dans l'onglet "OAuth2" :
+   - **Redirect URIs** : Ajoutez exactement `https://flashbackfa-entreprise.fr/auth/callback`
+   - **Scopes** : Sélectionnez `identify`, `email`, `guilds`
+5. **Invitez le bot** dans vos serveurs avec les permissions :
+   - Read Messages/View Channels
+   - View Server Members
+
+### 2. Variables d'environnement
+
+**OBLIGATOIRES** - Configurez ces variables :
+
+```env
+VITE_DISCORD_CLIENT_ID=votre_client_id_discord
+VITE_DISCORD_CLIENT_SECRET=votre_client_secret_discord
+VITE_DISCORD_BOT_TOKEN=votre_bot_token_discord
+VITE_DISCORD_REDIRECT_URI=https://flashbackfa-entreprise.fr/auth/callback
+VITE_APP_URL=https://flashbackfa-entreprise.fr
+VITE_MAIN_GUILD_ID=id_de_votre_guilde_principale
+VITE_DOT_GUILD_ID=id_de_votre_guilde_dot
 ```
 
-### 2. Configuration
+### 3. Système de rôles basé sur les vrais rôles Discord
 
-1. Copiez `.env.example` vers `.env`
-2. Configurez vos variables d'environnement Discord et Supabase
-3. Assurez-vous que votre bot Discord a les bonnes permissions
+L'application utilise un **bot Discord** pour récupérer les vrais rôles :
+- **Fondateur** (ID: 462716512252329996) → SuperAdmin automatique + seul à pouvoir promouvoir Superviseurs
+- **Rôles contenant "superviseur", "admin"** → Superviseur (permissions SuperAdmin)
+- **Rôles contenant "dot", "directeur"** → DOT
+- **Rôles contenant "patron", "owner"** → Patron
+- **Rôles contenant "co-patron", "vice"** → Co-Patron
+- **Propriétaire de guilde** → Patron (guilde principale) ou DOT (guilde DOT)
+- **Autres membres** → Employé
 
-### 3. Lancement
+### 4. Avantages du nouveau système
 
-```bash
-python run.py
-```
+✅ **Plus de F5 nécessaire** - Navigation fluide sans rechargement
+✅ **Vrais rôles Discord** - Récupération via bot Discord
+✅ **Fondateur privilégié** - SuperAdmin automatique
+✅ **Logo FlashbackFA** - Branding personnalisé
+✅ **Interface moderne** - Design professionnel
 
-L'application sera disponible sur `http://localhost:5000`
+## Déploiement
 
-## 📁 **Structure du Projet**
+L'application est déployée sur : https://flashbackfa-entreprise.fr
 
-```
-├── app.py                 # Application Flask principale
-├── run.py                 # Script de lancement
-├── requirements.txt       # Dépendances Python
-├── templates/            # Templates HTML Jinja2
-│   ├── base.html         # Template de base
-│   ├── auth.html         # Page d'authentification
-│   ├── dashboard.html    # Tableau de bord
-│   ├── dotations.html    # Gestion des dotations
-│   ├── impots.html       # Calculs fiscaux
-│   ├── staff.html        # Gestion staff
-│   ├── superadmin.html   # Administration
-│   └── error.html        # Pages d'erreur
-├── static/              # Fichiers statiques
-│   ├── css/
-│   │   └── style.css    # Styles personnalisés
-│   └── js/
-│       └── main.js      # JavaScript utilitaire
-└── .env                 # Variables d'environnement
-```
+## Fonctionnalités
 
-## 🔧 **Fonctionnalités**
-
-### Backend Python (Flask)
-- ✅ **Authentification Discord OAuth** complète
-- ✅ **Gestion des sessions** sécurisée
-- ✅ **API REST** pour les actions AJAX
-- ✅ **Intégration Supabase** native
-- ✅ **Système de permissions** basé sur les rôles Discord
-- ✅ **Gestion des erreurs** robuste
-- ✅ **Logging** complet
-
-### Frontend HTML/CSS
-- ✅ **Templates Jinja2** avec héritage
-- ✅ **Tailwind CSS** pour le styling
-- ✅ **Lucide Icons** pour les icônes
-- ✅ **Design responsive** mobile-first
-- ✅ **Animations CSS** fluides
-- ✅ **Mode sombre** (optionnel)
-
-### JavaScript Minimal
-- ✅ **Interactions AJAX** pour les actions dynamiques
-- ✅ **Validation côté client** légère
-- ✅ **Notifications toast** élégantes
-- ✅ **Modales** pour les confirmations
-- ✅ **Auto-save** pour les formulaires
-- ✅ **Export CSV/Excel** côté client
-
-## 🛡️ **Sécurité**
-
-- ✅ **Sessions Flask** sécurisées
-- ✅ **CSRF Protection** intégrée
-- ✅ **Validation des permissions** côté serveur
-- ✅ **Sanitisation des données** automatique
-- ✅ **Gestion des erreurs** sans exposition d'informations sensibles
-
-## 🎨 **Design**
-
-- ✅ **Interface moderne** avec Tailwind CSS
-- ✅ **Composants réutilisables** (cards, badges, boutons)
-- ✅ **Animations fluides** et micro-interactions
-- ✅ **Responsive design** pour tous les écrans
-- ✅ **Accessibilité** améliorée
-- ✅ **Mode impression** optimisé
-
-## 📊 **Avantages de cette Architecture**
-
-### Performance
-- **Rendu côté serveur** plus rapide
-- **Moins de JavaScript** = chargement plus rapide
-- **Cache intelligent** des données
-- **Optimisations automatiques** de Flask
-
-### Maintenabilité
-- **Séparation claire** backend/frontend
-- **Templates réutilisables** avec Jinja2
-- **Code Python** plus facile à déboguer
-- **Structure modulaire** et extensible
-
-### Sécurité
-- **Validation côté serveur** systématique
-- **Sessions sécurisées** par Flask
-- **Moins de surface d'attaque** côté client
-- **Gestion centralisée** des permissions
-
-### Développement
-- **Rechargement automatique** en mode debug
-- **Debugging Python** intégré
-- **Logs structurés** pour le monitoring
-- **Tests unitaires** plus faciles
-
-## 🔄 **Migration depuis React**
-
-Les fonctionnalités principales ont été préservées :
-- ✅ **Authentification Discord** identique
-- ✅ **Gestion des entreprises** complète
-- ✅ **Calculs fiscaux** automatiques
-- ✅ **Import/Export** des données
-- ✅ **Système de permissions** inchangé
-- ✅ **Interface utilisateur** similaire
-
-## 🚀 **Déploiement**
-
-L'application est optimisée pour le déploiement sur :
-- **Heroku** (avec Gunicorn)
-- **Railway** 
-- **DigitalOcean App Platform**
-- **AWS Elastic Beanstalk**
-- **Google Cloud Run**
-
-## 📞 **Support**
-
-Pour toute question ou problème :
-1. Vérifiez les logs Flask
-2. Consultez la documentation Discord API
-3. Vérifiez la configuration Supabase
+### Authentification
+- ✅ Authentification Discord OAuth
+- ✅ Bot Discord pour récupération des rôles réels
+- ✅ Fondateur avec privilèges SuperAdmin
+- ✅ Support multi-guildes
+- ✅ Dashboard multi-onglets
+- ✅ Gestion des entreprises
+- ✅ Calcul de salaires
+- ✅ Gestion fiscale
+- ✅ Administration système
