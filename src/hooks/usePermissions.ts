@@ -103,8 +103,6 @@ export function usePermissions() {
         return hasPermission('company_config')
       case '/superadmin':
         return hasPermission('superadmin')
-      case '/hwip-admin':
-        return hasPermission('config_staff')
       case '/staff':
         return hasPermission('config_staff')
       default:

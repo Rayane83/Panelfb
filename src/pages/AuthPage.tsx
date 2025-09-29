@@ -143,7 +143,7 @@ export function AuthPage() {
                       Authentification Sécurisée
                     </CardTitle>
                     <CardDescription className="text-slate-300">
-                      Connectez-vous avec Discord OAuth + HWIP pour accéder au système
+                      Connectez-vous avec Discord OAuth pour accéder au système
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -162,10 +162,6 @@ export function AuthPage() {
                     <div className="flex items-center space-x-3 text-sm text-slate-300">
                       <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
                       <span>Architecture hexagonale (Ports & Adapters)</span>
-                    </div>
-                    <div className="flex items-center space-x-3 text-sm text-slate-300">
-                      <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
-                      <span>Authentification HWIP renforcée</span>
                     </div>
                   </div>
 
@@ -222,10 +218,10 @@ export function AuthPage() {
                   <div className="text-center space-y-2">
                     <div className="flex items-center justify-center space-x-2 text-xs text-slate-400">
                       <Shield className="h-3 w-3" />
-                      <span>Connexion sécurisée SSL/TLS + HWIP</span>
+                      <span>Connexion sécurisée SSL/TLS</span>
                     </div>
                     <p className="text-xs text-slate-500">
-                      Authentification renforcée par empreinte matérielle
+                      Authentification Discord OAuth sécurisée
                     </p>
                   </div>
                 </CardContent>

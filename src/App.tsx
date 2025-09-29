@@ -8,7 +8,6 @@ import { Dashboard } from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
 import { SuperAdminPage } from './pages/SuperAdminPage'
-import { HWIPAdminPage } from './pages/HWIPAdminPage'
 import { StaffPage } from './pages/StaffPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
@@ -108,14 +107,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredRoute="/superadmin">
             <SuperAdminPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/hwip-admin" 
-        element={
-          <ProtectedRoute requiredRoute="/hwip-admin">
-            <HWIPAdminPage />
           </ProtectedRoute>
         } 
       />

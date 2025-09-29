@@ -157,12 +157,5 @@ export const adminApi = {
   updateUserRole: (id: string, role: UserRole) => api.put(`/admin/users/${id}/role`, { role })
 }
 
-// API HWIP
-export const hwipApi = {
-  getDevices: () => api.get('/hwip/devices'),
-  authorizeDevice: (deviceId: string) => api.post(`/hwip/devices/${deviceId}/authorize`),
-  blockDevice: (deviceId: string) => api.post(`/hwip/devices/${deviceId}/block`),
-  revokeDevice: (deviceId: string) => api.post(`/hwip/devices/${deviceId}/revoke`)
-}
 
 export default api

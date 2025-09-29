@@ -16,15 +16,11 @@ export function AuthCallbackPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-white">Authentification en cours...</h2>
           <p className="text-slate-300">
-            Traitement de votre connexion Discord + vérification HWIP
+            Traitement de votre connexion Discord
           </p>
           <div className="flex items-center justify-center space-x-2 text-sm text-slate-400">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span>Récupération des rôles Discord</span>
-          </div>
-          <div className="flex items-center justify-center space-x-2 text-sm text-slate-400">
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-300"></div>
-            <span>Validation de l'empreinte matérielle</span>
           </div>
           <div className="flex items-center justify-center space-x-2 text-sm text-slate-400">
             <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse delay-700"></div>
