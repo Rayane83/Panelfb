@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './components/providers/AuthProvider'
@@ -8,9 +7,8 @@ import { Header } from './components/layout/Header'
 import { Dashboard } from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
-import SuperAdminPage from './pages/SuperAdminPage'
+import { SuperAdminPage } from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
-import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 const queryClient = new QueryClient()
 
@@ -58,14 +56,6 @@ function ProtectedRoute({ children, requiredRoute }: { children: React.ReactNode
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
-  const location = window.location.pathname
-
-  // Redirection après authentification vers la page demandée
-  useEffect(() => {
-    if (!isAuthenticated && location !== '/auth' && location !== '/auth/callback') {
-      sessionStorage.setItem('intendedPath', location)
-    }
-  }, [isAuthenticated, location])
 
   if (isLoading) {
     return (
@@ -83,10 +73,6 @@ function AppRoutes() {
       <Route 
         path="/auth" 
         element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />} 
-      />
-      <Route 
-        path="/auth/callback" 
-        element={<AuthCallbackPage />} 
       />
       <Route 
         path="/" 
