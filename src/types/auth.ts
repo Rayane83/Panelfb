@@ -1,4 +1,4 @@
-export type UserRole = 'employee' | 'co_patron' | 'patron' | 'dot' | 'superviseur' | 'superadmin'
+export type UserRole = 'employee' | 'co_patron' | 'patron' | 'dot' | 'staff' | 'superadmin'
 
 export interface User {
   id: string
@@ -10,6 +10,7 @@ export interface User {
   currentGuild?: Guild
   role: UserRole
   roleLevel: number
+  allGuildRoles?: GuildRole[]
 }
 
 export interface Guild {
@@ -19,6 +20,17 @@ export interface Guild {
   owner: boolean
   permissions: string
   roles: DiscordRole[]
+}
+
+export interface GuildRole {
+  guildId: string
+  guildName: string
+  userRole: {
+    role: UserRole
+    roleLevel: number
+    roleName: string
+  }
+  roles: string[]
 }
 
 export interface DiscordRole {

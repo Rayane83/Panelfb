@@ -57,7 +57,7 @@ const PERMISSIONS_MATRIX = {
     company_config: false,
     superadmin: false
   },
-  superviseur: {
+  staff: {
     dashboard: true,
     dotations: true,
     impots: true,
@@ -104,6 +104,8 @@ export function usePermissions() {
       case '/superadmin':
         return hasPermission('superadmin')
       case '/hwip-admin':
+        return hasPermission('config_staff')
+      case '/staff':
         return hasPermission('config_staff')
       default:
         return true

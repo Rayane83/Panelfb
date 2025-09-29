@@ -2,7 +2,7 @@ export interface Enterprise {
   id: string
   name: string
   type: string
-  description: string
+  description?: string
   guildId: string
   ownerId: string
   settings: EnterpriseSettings
@@ -66,7 +66,7 @@ export interface TaxConfig {
 
 export interface TaxBracket {
   min: number
-  max: number
+  max: number | null
   rate: number
 }
 
@@ -75,4 +75,112 @@ export interface BlanchimentConfig {
   threshold: number
   maxAmount: number
   cooldownHours: number
+  percEntreprise: number
+  percGroupe: number
+}
+
+export interface DotationReport {
+  id: string
+  enterpriseId: string
+  period: string
+  employees: DotationEmployee[]
+  expenses: Expense[]
+  withdrawals: Withdrawal[]
+  totalCA: number
+  totalSalaries: number
+  totalBonuses: number
+  status: 'Brouillon' | 'Validé' | 'Payé'
+  createdBy: string
+  createdAt: Date
+}
+
+export interface DotationEmployee {
+  id: string
+  nom: string
+  grade: string
+  run: number
+  facture: number
+  vente: number
+  caTotal: number
+  salaire: number
+  prime: number
+}
+
+export interface Expense {
+  id: string
+  date: string
+  justificatif: string
+  montant: number
+  category?: string
+}
+
+export interface Withdrawal {
+  id: string
+  date: string
+  justificatif: string
+  montant: number
+}
+
+export interface TaxSimulation {
+  id: string
+  enterpriseId: string
+  baseAmount: number
+  period: string
+  taxType: string
+  calculatedTax: number
+  effectiveRate: number
+  brackets: TaxBracketCalculation[]
+  createdBy: string
+  createdAt: Date
+}
+
+export interface TaxBracketCalculation {
+  bracket: TaxBracket
+  taxOnBracket: number
+}
+
+export interface BlanchimentOperation {
+  id: string
+  enterpriseId: string
+  statut: 'En cours' | 'Terminé' | 'Annulé'
+  dateRecu: string
+  dateRendu?: string
+  duree: number
+  groupe?: string
+  employe?: string
+  donneur?: string
+  recep?: string
+  somme: number
+  percEntreprise: number
+  percGroupe: number
+  isTemporary?: boolean
+  markedForDeletion?: boolean
+}
+
+export interface Document {
+  id: string
+  enterpriseId: string
+  name: string
+  type: 'facture' | 'diplome'
+  filePath: string
+  fileSize: number
+  mimeType: string
+  owner: string
+  uploadDate: Date
+  tags?: string[]
+  preview?: string
+}
+
+export interface Archive {
+  id: string
+  enterpriseId: string
+  numero: string
+  date: string
+  amount: number
+  description: string
+  status: 'En attente' | 'Validé' | 'Refusé'
+  type: string
+  payload: any
+  createdBy: string
+  createdAt: Date
 }

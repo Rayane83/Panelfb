@@ -1,5 +1,5 @@
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID
-const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI || 'https://flashbackfa-entreprise.fr/auth/callback'
+const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI || `${window.location.origin}/auth/callback`
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
 const DISCORD_CLIENT_SECRET = import.meta.env.VITE_DISCORD_CLIENT_SECRET
 const DISCORD_BOT_TOKEN = import.meta.env.VITE_DISCORD_BOT_TOKEN
@@ -123,7 +123,6 @@ export class DiscordAuth {
     return response.json()
   }
 
-  // Utilisation du bot pour récupérer les rôles d'un utilisateur dans une guilde
   static async getUserRolesInGuild(userId: string, guildId: string): Promise<string[]> {
     if (!DISCORD_BOT_TOKEN) {
       console.warn('Bot token not configured, cannot fetch user roles')
@@ -189,15 +188,15 @@ export function determineUserRoleFromDiscordData(
 } {
   // Le fondateur est toujours superadmin
   if (userId === FOUNDER_DISCORD_ID) {
-    return { role: 'superadmin', roleLevel: 7, roleName: 'Fondateur' }
+    return { role: 'superadmin', roleLevel: 6, roleName: 'Fondateur' }
   }
 
   // Si c'est le propriétaire de la guilde
   if (isOwner) {
     if (guildId === DOT_GUILD_ID) {
-      return { role: 'dot', roleLevel: 5, roleName: 'DOT' }
+      return { role: 'dot', roleLevel: 4, roleName: 'DOT' }
     }
-    return { role: 'patron', roleLevel: 4, roleName: 'Patron' }
+    return { role: 'patron', roleLevel: 3, roleName: 'Patron' }
   }
 
   // Créer un mapping des IDs de rôles vers les noms
@@ -208,11 +207,11 @@ export function determineUserRoleFromDiscordData(
 
   // Vérifier les rôles par priorité (du plus élevé au plus bas)
   const roleChecks = [
-    { keywords: ['superadmin', 'super admin', 'super-admin', 'fondateur'], role: 'superadmin', level: 7, name: 'SuperAdmin' },
-    { keywords: ['superviseur', 'supervisor', 'staff', 'admin', 'administrateur'], role: 'superviseur', level: 6, name: 'Superviseur' },
-    { keywords: ['dot', 'directeur', 'direction', 'fiscal'], role: 'dot', level: 5, name: 'DOT' },
-    { keywords: ['patron', 'owner', 'propriétaire', 'ceo', 'boss'], role: 'patron', level: 4, name: 'Patron' },
-    { keywords: ['co-patron', 'copatron', 'co patron', 'vice', 'adjoint'], role: 'co_patron', level: 3, name: 'Co-Patron' },
+    { keywords: ['superadmin', 'super admin', 'super-admin', 'fondateur'], role: 'superadmin', level: 6, name: 'SuperAdmin' },
+    { keywords: ['staff', 'admin', 'administrateur', 'superviseur'], role: 'staff', level: 5, name: 'Staff' },
+    { keywords: ['dot', 'directeur', 'direction', 'fiscal'], role: 'dot', level: 4, name: 'DOT' },
+    { keywords: ['patron', 'owner', 'propriétaire', 'ceo', 'boss'], role: 'patron', level: 3, name: 'Patron' },
+    { keywords: ['co-patron', 'copatron', 'co patron', 'vice', 'adjoint'], role: 'co_patron', level: 2, name: 'Co-Patron' },
     { keywords: ['employee', 'employé', 'membre'], role: 'employee', level: 1, name: 'Employé' }
   ]
 
@@ -244,6 +243,7 @@ export async function getHighestRoleFromAllGuilds(
   roleLevel: number
   roleName: string
   guildName: string
+  allGuildRoles: any[]
 }> {
   let highestRole = { 
     role: 'employee', 
@@ -252,13 +252,16 @@ export async function getHighestRoleFromAllGuilds(
     guildName: 'Aucune'
   }
 
+  const allGuildRoles: any[] = []
+
   // Le fondateur est toujours superadmin
   if (userId === FOUNDER_DISCORD_ID) {
     return {
       role: 'superadmin',
-      roleLevel: 7,
+      roleLevel: 6,
       roleName: 'Fondateur',
-      guildName: 'Système'
+      guildName: 'Système',
+      allGuildRoles: []
     }
   }
   
@@ -280,6 +283,13 @@ export async function getHighestRoleFromAllGuilds(
         guild.owner, 
         guild.id
       )
+
+      allGuildRoles.push({
+        guildId: guild.id,
+        guildName: guild.name,
+        userRole: roleInfo,
+        roles: userRoles
+      })
       
       if (roleInfo.roleLevel > highestRole.roleLevel) {
         highestRole = {
@@ -292,5 +302,5 @@ export async function getHighestRoleFromAllGuilds(
     }
   }
   
-  return highestRole
+  return { ...highestRole, allGuildRoles }
 }

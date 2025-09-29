@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react'
-import { AuthContext } from '../../hooks/useAuth'
-import { User, UserRole } from '../../types/auth'
-import { DiscordAuth, getHighestRoleFromAllGuilds } from '../../lib/discord'
+import { AuthContext } from '../hooks/useAuth'
+import { User, UserRole } from '../types/auth'
+import { DiscordAuth, getHighestRoleFromAllGuilds } from '../lib/discord'
 
 interface AuthProviderProps {
   children: ReactNode
@@ -82,14 +82,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             guilds: processedGuilds,
             currentGuild: processedGuilds[0],
             role: highestRole.role as UserRole,
-            roleLevel: highestRole.roleLevel
+            roleLevel: highestRole.roleLevel,
+            allGuildRoles: highestRole.allGuildRoles
           }
           
           setUser(userData)
           localStorage.setItem('discord_user', JSON.stringify(userData))
           
-          // Rediriger vers le dashboard sans rechargement
-          window.history.replaceState({}, '', '/')
+          // Rediriger vers la page demandée ou le dashboard
+          const intendedPath = sessionStorage.getItem('intendedPath') || '/'
+          sessionStorage.removeItem('intendedPath')
+          window.history.replaceState({}, '', intendedPath)
           
         } catch (error) {
           console.error('OAuth callback error:', error)
@@ -120,6 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     localStorage.removeItem('discord_user')
+    sessionStorage.removeItem('intendedPath')
     setUser(null)
     // Rediriger vers la page d'auth sans rechargement
     window.history.pushState({}, '', '/auth')
@@ -138,7 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const hasPermission = (permission: string): boolean => {
-    return user?.roleLevel ? user.roleLevel >= 3 : false
+    return user?.roleLevel ? user.roleLevel >= 1 : false
   }
 
   return (
