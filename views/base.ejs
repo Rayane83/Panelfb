@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - FlashbackFA Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="h-full">
+    <div class="min-h-full">
+        <% if (typeof user !== 'undefined' && user) { %>
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm border-b border-gray-200">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex">
+                        <div class="flex-shrink-0 flex items-center">
+                            <i data-lucide="building-2" class="h-8 w-8 text-indigo-600"></i>
+                            <span class="ml-2 text-xl font-bold text-gray-900">FlashbackFA</span>
+                        </div>
+                        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                            <a href="/dashboard" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <i data-lucide="home" class="h-4 w-4 mr-2"></i>
+                                Tableau de bord
+                            </a>
+                            <% if (['superadmin', 'superviseur', 'dot', 'patron', 'co_patron'].includes(user.role)) { %>
+                            <a href="/dotations" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <i data-lucide="calculator" class="h-4 w-4 mr-2"></i>
+                                Dotations
+                            </a>
+                            <% } %>
+                            <% if (['superadmin', 'superviseur', 'dot'].includes(user.role)) { %>
+                            <a href="/impots" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <i data-lucide="receipt" class="h-4 w-4 mr-2"></i>
+                                Impôts
+                            </a>
+                            <% } %>
+                            <% if (['superadmin', 'superviseur'].includes(user.role)) { %>
+                            <a href="/staff" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <i data-lucide="users" class="h-4 w-4 mr-2"></i>
+                                Staff
+                            </a>
+                            <% } %>
+                            <% if (user.role === 'superadmin') { %>
+                            <a href="/superadmin" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <i data-lucide="settings" class="h-4 w-4 mr-2"></i>
+                                Admin
+                            </a>
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full" src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="<%= user.username %>">
+                                <span class="ml-3 text-sm font-medium text-gray-700"><%= user.username %></span>
+                                <div class="ml-3 relative">
+                                    <a href="/logout" class="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        <i data-lucide="log-out" class="h-5 w-5"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <% } %>
+
+        <!-- Contenu principal -->
+        <main>
+            <%- body %>
+        </main>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script>
+        // Initialisation des icônes Lucide
+        lucide.createIcons();
+    </script>
+</body>
+</html>

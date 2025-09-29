@@ -427,21 +427,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`📁 Views directory: ${path.join(__dirname, 'views')}`);
 });
 
-// Gestion des erreurs de serveur
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Erreur: Le port ${PORT} est déjà utilisé par un autre processus.`);
-    console.error(`💡 Solutions possibles:`);
-    console.error(`   1. Arrêter le processus utilisant le port ${PORT}`);
-    console.error(`   2. Utiliser un autre port: PORT=3001 node server.js`);
-    console.error(`   3. Identifier le processus: lsof -i :${PORT} (Linux/Mac) ou netstat -ano | findstr :${PORT} (Windows)`);
-    process.exit(1);
-  } else {
-    console.error('❌ Erreur serveur:', err);
-    process.exit(1);
-  }
-});
-
 // Gestion propre de l'arrêt
 process.on('SIGTERM', () => {
   console.log('SIGTERM reçu, arrêt du serveur...');

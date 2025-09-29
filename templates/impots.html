@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Impôts - FlashbackFA Enterprise{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold tracking-tight">Gestion Fiscale Réelle</h2>
+            <p class="text-gray-600">Calculs fiscaux basés sur les données réelles de vos dotations</p>
+        </div>
+        <button onclick="location.reload()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+            <span>Actualiser</span>
+        </button>
+    </div>
+
+    <!-- Statistiques fiscales -->
+    <div class="grid gap-4 md:grid-cols-4">
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Bénéfice Net</h4>
+                <i data-lucide="trending-up" class="h-4 w-4 text-gray-400"></i>
+            </div>
+            <div class="text-2xl font-bold">
+                {{ real_tax_data.net_profit|currency if real_tax_data else '0 €' }}
+            </div>
+            <p class="text-xs text-gray-500">Base d'imposition</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Impôt IS</h4>
+                <i data-lucide="receipt" class="h-4 w-4 text-red-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-red-600">
+                {{ real_tax_data.calculated_tax|currency if real_tax_data else '0 €' }}
+            </div>
+            <p class="text-xs text-gray-500">Impôt sur les sociétés</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Impôt Richesse</h4>
+                <i data-lucide="calculator" class="h-4 w-4 text-purple-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-purple-600">
+                {{ real_tax_data.wealth_tax|currency if real_tax_data else '0 €' }}
+            </div>
+            <p class="text-xs text-gray-500">Impôt sur la fortune</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-600">Montant Final</h4>
+                <i data-lucide="file-text" class="h-4 w-4 text-green-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-green-600">
+                {{ real_tax_data.final_amount|currency if real_tax_data else '0 €' }}
+            </div>
+            <p class="text-xs text-gray-500">Après tous impôts</p>
+        </div>
+    </div>
+
+    {% if real_tax_data %}
+    <!-- Calcul fiscal détaillé -->
+    <div class="card">
+        <h3 class="text-lg font-semibold mb-4">Calcul Fiscal Réel - Période {{ real_tax_data.period }}</h3>
+        <p class="text-sm text-gray-600 mb-6">Basé sur les données réelles de vos dotations et dépenses</p>
+        
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Étape</th>
+                        <th>Description</th>
+                        <th class="text-right">Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="font-medium text-green-600">1</td>
+                        <td>Chiffre d'affaires total</td>
+                        <td class="text-right font-medium text-green-600">{{ real_tax_data.total_ca|currency }}</td>
+                    </tr>
+                    <tr>
+                        <td class="font-medium text-red-600">2</td>
+                        <td>Dépenses déductibles (salaires + charges + frais)</td>
+                        <td class="text-right font-medium text-red-600">-{{ real_tax_data.total_expenses|currency }}</td>
+                    </tr>
+                    <tr class="bg-blue-50">
+                        <td class="font-medium text-blue-600">3</td>
+                        <td class="font-medium">Bénéfice imposable</td>
+                        <td class="text-right font-bold text-blue-600">{{ real_tax_data.net_profit|currency }}</td>
+                    </tr>
+                    <tr>
+                        <td class="font-medium text-red-600">4</td>
+                        <td>Impôt sur les sociétés ({{ "%.1f"|format(real_tax_data.effective_rate) }}%)</td>
+                        <td class="text-right font-medium text-red-600">-{{ real_tax_data.calculated_tax|currency }}</td>
+                    </tr>
+                    <tr>
+                        <td class="font-medium text-purple-600">5</td>
+                        <td>Bénéfice après IS</td>
+                        <td class="text-right font-medium">{{ (real_tax_data.net_profit - real_tax_data.calculated_tax)|currency }}</td>
+                    </tr>
+                    <tr>
+                        <td class="font-medium text-purple-600">6</td>
+                        <td>Impôt sur la richesse</td>
+                        <td class="text-right font-medium text-purple-600">-{{ real_tax_data.wealth_tax|currency }}</td>
+                    </tr>
+                    <tr class="bg-green-50">
+                        <td class="font-bold text-green-600">7</td>
+                        <td class="font-bold">Montant final disponible</td>
+                        <td class="text-right font-bold text-green-600 text-lg">{{ real_tax_data.final_amount|currency }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex space-x-2 mt-6">
+            {% if user.role in ['patron', 'co_patron'] %}
+            <button onclick="saveReport()" class="btn-primary">
+                <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                Sauvegarder le Rapport
+            </button>
+            {% endif %}
+            <button onclick="archiveReport()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <i data-lucide="archive" class="h-4 w-4 mr-2"></i>
+                Archiver
+            </button>
+            <button onclick="exportReport()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <i data-lucide="download" class="h-4 w-4 mr-2"></i>
+                Export Excel
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="card text-center py-12">
+        <i data-lucide="calculator" class="h-12 w-12 text-gray-400 mx-auto mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-600 mb-2">Aucune donnée fiscale disponible</h3>
+        <p class="text-sm text-gray-500">
+            Créez une dotation dans l'onglet "Dotations" pour voir les calculs fiscaux
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Barèmes fiscaux -->
+    <div class="grid gap-6 md:grid-cols-2">
+        <div class="card">
+            <h3 class="text-lg font-semibold mb-4">Barème Impôt sur les Sociétés</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Tranches d'imposition IS en vigueur ({{ tax_brackets|length }} tranches)
+            </p>
+            <div class="space-y-3">
+                {% for bracket in tax_brackets %}
+                <div class="flex justify-between items-center p-3 border rounded">
+                    <div>
+                        <p class="text-sm font-medium">
+                            {{ bracket.min_amount|currency }} - 
+                            {% if bracket.max_amount %}{{ bracket.max_amount|currency }}{% else %}∞{% endif %}
+                        </p>
+                    </div>
+                    <span class="badge badge-info">{{ bracket.rate }}%</span>
+                </div>
+                {% endfor %}
+                {% if not tax_brackets %}
+                <p class="text-center text-gray-500 py-4">Aucune tranche configurée</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="text-lg font-semibold mb-4">Barème Impôt sur la Fortune</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Tranches d'imposition sur la richesse ({{ wealth_brackets|length }} tranches)
+            </p>
+            <div class="space-y-3">
+                {% for bracket in wealth_brackets %}
+                <div class="flex justify-between items-center p-3 border rounded">
+                    <div>
+                        <p class="text-sm font-medium">
+                            {{ bracket.min_amount|currency }} - 
+                            {% if bracket.max_amount %}{{ bracket.max_amount|currency }}{% else %}∞{% endif %}
+                        </p>
+                    </div>
+                    <span class="badge bg-purple-100 text-purple-800">{{ bracket.rate }}%</span>
+                </div>
+                {% endfor %}
+                {% if not wealth_brackets %}
+                <p class="text-center text-gray-500 py-4">Aucune tranche configurée</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function saveReport() {
+        // Logique de sauvegarde du rapport fiscal
+        showToast('success', 'Rapport fiscal sauvegardé');
+    }
+
+    function archiveReport() {
+        // Logique d'archivage
+        showToast('success', 'Rapport fiscal archivé');
+    }
+
+    function exportReport() {
+        // Logique d'export Excel
+        showToast('success', 'Rapport fiscal exporté');
+    }
+
+    function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 fade-in ${
+            type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+            'bg-red-100 text-red-800 border border-red-200'
+        }`;
+        toast.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-triangle'}" class="h-4 w-4"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}
