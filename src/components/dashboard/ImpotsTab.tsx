@@ -230,9 +230,11 @@ export function ImpotsTab() {
             <CardDescription className="text-blue-700">
               Créer une déclaration fiscale PDF
             </CardDescription>
-          </CardContent>
+          </CardHeader>
+          <CardContent>
           <CardContent>
             <Button className="w-full">Générer PDF</Button>
+          </CardContent>
           </CardContent>
         </Card>
 
@@ -245,9 +247,11 @@ export function ImpotsTab() {
             <CardDescription className="text-green-700">
               Consulter les simulations précédentes
             </CardDescription>
-          </CardContent>
+          </CardHeader>
+          <CardContent>
           <CardContent>
             <Button variant="outline" className="w-full">Voir l'historique</Button>
+          </CardContent>
           </CardContent>
         </Card>
       </div>

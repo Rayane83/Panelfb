@@ -172,7 +172,9 @@ export function DotationsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+          <CardContent>
             <Button className="w-full">Créer</Button>
+          </CardContent>
           </CardContent>
         </Card>
 
@@ -185,9 +187,11 @@ export function DotationsTab() {
             <CardDescription className="text-blue-700">
               Importer des données depuis Excel/CSV
             </CardDescription>
-          </CardContent>
+          </CardHeader>
+          <CardContent>
           <CardContent>
             <Button variant="outline" className="w-full">Importer</Button>
+          </CardContent>
           </CardContent>
         </Card>
 
@@ -200,9 +204,11 @@ export function DotationsTab() {
             <CardDescription className="text-purple-700">
               Calculateur de salaires intégré
             </CardDescription>
-          </CardContent>
+          </CardHeader>
+          <CardContent>
           <CardContent>
             <Button variant="outline" className="w-full">Calculer</Button>
+          </CardContent>
           </CardContent>
         </Card>
       </div>
