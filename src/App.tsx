@@ -1,13 +1,14 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './components/providers/AuthProvider'
 import { useAuth } from './hooks/useAuth'
 import { usePermissions } from './hooks/usePermissions'
 import { Header } from './components/layout/Header'
-import { Dashboard } from './pages/Dashboard'
+import Dashboard from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
-import { SuperAdminPage } from './pages/SuperAdminPage'
+import SuperAdminPage from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
@@ -57,6 +58,14 @@ function ProtectedRoute({ children, requiredRoute }: { children: React.ReactNode
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth()
+  const location = window.location.pathname
+
+  // Redirection après authentification vers la page demandée
+  useEffect(() => {
+    if (!isAuthenticated && location !== '/auth' && location !== '/auth/callback') {
+      sessionStorage.setItem('intendedPath', location)
+    }
+  }, [isAuthenticated, location])
 
   if (isLoading) {
     return (
