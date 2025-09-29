@@ -18,7 +18,6 @@ import {
   FileText,
   Archive,
   Shuffle
-  Calculator
 } from 'lucide-react'
 
 interface EnterpriseStats {
@@ -32,13 +31,6 @@ interface EnterpriseStats {
   archivesCount: number
   blanchimentCount: number
   lastActivity: string
-  maxEmployeeSalary: number
-  maxBossSalary: number
-  maxEmployeeBonus: number
-  maxBossBonus: number
-  taxRate: number
-  wealthTax: number
-  netProfit: number
 }
 
 export function DashboardTab() {
@@ -122,14 +114,7 @@ export function DashboardTab() {
           documentsCount: documents.length,
           archivesCount: archives.length,
           blanchimentCount: blanchimentOps.length,
-          lastActivity: enterprise.updated_at,
-          maxEmployeeSalary: 0,
-          maxBossSalary: 0,
-          maxEmployeeBonus: 0,
-          maxBossBonus: 0,
-          taxRate: 0,
-          wealthTax: 0,
-          netProfit: totalCA - totalSalaries - totalBonuses
+          lastActivity: enterprise.updated_at
         })
       }
 
@@ -228,95 +213,6 @@ export function DashboardTab() {
       {/* Enterprise stats */}
       {currentStats && (
         <>
-          {/* Résumé fiscal */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calculator className="h-5 w-5 text-primary" />
-                <span>Résumé Fiscal et Salarial</span>
-              </CardTitle>
-              <CardDescription>
-                Calculs basés sur les grilles configurées par SuperAdmin
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Limites salariales */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">LIMITES SALARIALES</h4>
-                  <div className="grid gap-3">
-                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm font-medium">Salaire Maximum employé</span>
-                      <span className="font-bold">{formatCurrency(currentStats.maxEmployeeSalary)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm font-medium">Prime Maximum employé</span>
-                      <span className="font-bold">{formatCurrency(currentStats.maxEmployeeBonus)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm font-medium">Salaire Maximum patron</span>
-                      <span className="font-bold">{formatCurrency(currentStats.maxBossSalary)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm font-medium">Prime Maximum patron</span>
-                      <span className="font-bold">{formatCurrency(currentStats.maxBossBonus)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Calculs fiscaux */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">CALCULS FISCAUX</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">CA Brut</th>
-                          <th className="text-left p-2">Dépense Déductibles</th>
-                          <th className="text-left p-2">Bénéfice</th>
-                          <th className="text-left p-2">Taux d'imposition</th>
-                          <th className="text-left p-2">Montant des impôts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="p-2">{formatCurrency(currentStats.totalCA)}</td>
-                          <td className="p-2">{formatCurrency(0)}</td>
-                          <td className="p-2">{formatCurrency(currentStats.netProfit)}</td>
-                          <td className="p-2">{currentStats.taxRate}%</td>
-                          <td className="p-2">{formatCurrency(currentStats.netProfit * (currentStats.taxRate / 100))}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Bénéfice après Impôt</th>
-                          <th className="text-left p-2">Montant total des primes</th>
-                          <th className="text-left p-2">Bénéfice après primes</th>
-                          <th className="text-left p-2">Impôt sur la richesse</th>
-                          <th className="text-left p-2">Relevé du compte bancaire</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="p-2">{formatCurrency(currentStats.netProfit * (1 - currentStats.taxRate / 100))}</td>
-                          <td className="p-2">{formatCurrency(currentStats.totalBonuses)}</td>
-                          <td className="p-2">{formatCurrency(currentStats.netProfit * (1 - currentStats.taxRate / 100) - currentStats.totalBonuses)}</td>
-                          <td className="p-2">{currentStats.wealthTax}%</td>
-                          <td className="p-2">{formatCurrency(currentStats.netProfit * (1 - currentStats.taxRate / 100) - currentStats.totalBonuses - currentStats.totalSalaries)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card className="card-hover border-0 shadow-lg">
               <CardContent className="p-6">

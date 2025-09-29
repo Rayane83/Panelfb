@@ -129,21 +129,6 @@ export function Header() {
                         <Badge className={`mt-1 bg-gradient-to-r ${roleColors[user?.role || 'employee']} text-white border-0 text-xs`}>
                           {roleLabels[user?.role || 'employee']} • Niveau {user?.roleLevel}
                         </Badge>
-                        
-                        {/* Affichage des rôles par guilde */}
-                        {user?.allGuildRoles && user.allGuildRoles.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-xs text-muted-foreground font-medium">Rôles Discord:</p>
-                            {user.allGuildRoles.map((guildRole, index) => (
-                              <div key={index} className="text-xs">
-                                <span className="font-medium">{guildRole.guildName}:</span>
-                                <span className="ml-1 text-muted-foreground">
-                                  {guildRole.userRole.roleName} (IDs: {guildRole.roles.slice(0, 2).join(', ')}{guildRole.roles.length > 2 ? '...' : ''})
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -157,14 +142,6 @@ export function Header() {
                       <Settings className="h-4 w-4 mr-2" />
                       Paramètres
                     </Button>
-                    {(user?.role === 'superviseur' || user?.role === 'superadmin') && (
-                      <Button variant="ghost" className="w-full justify-start" size="sm" asChild>
-                        <a href="/staff">
-                          <Shield className="h-4 w-4 mr-2" />
-                          Gestion Staff
-                        </a>
-                      </Button>
-                    )}
                   </div>
                   
                   <div className="p-2 border-t">

@@ -11,7 +11,6 @@ export interface User {
   role: UserRole
   roleLevel: number
   enterprises: Enterprise[]
-  allGuildRoles?: { guildId: string; guildName: string; roles: string[]; userRole: any }[]
 }
 
 export interface Enterprise {

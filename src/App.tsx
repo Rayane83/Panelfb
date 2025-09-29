@@ -5,12 +5,11 @@ import { AuthProvider } from './components/providers/AuthProvider'
 import { useAuth } from './hooks/useAuth'
 import { usePermissions } from './hooks/usePermissions'
 import { Header } from './components/layout/Header'
-import Dashboard from './pages/Dashboard'
+import { Dashboard } from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
 import SuperAdminPage from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
-import StaffPage from './pages/StaffPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 const queryClient = new QueryClient()
@@ -118,14 +117,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredRoute="/hwip-admin">
             <HWIPAdminPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/staff" 
-        element={
-          <ProtectedRoute requiredRoute="/staff">
-            <StaffPage />
           </ProtectedRoute>
         } 
       />

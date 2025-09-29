@@ -4,13 +4,6 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10'
 const DISCORD_CLIENT_SECRET = import.meta.env.VITE_DISCORD_CLIENT_SECRET
 const DISCORD_BOT_TOKEN = import.meta.env.VITE_DISCORD_BOT_TOKEN
 
-// IDs des rôles spécifiques depuis le .env
-const MAIN_GUILD_STAFF_ROLE_ID = import.meta.env.VITE_MAIN_GUILD_STAFF_ROLE_ID
-const MAIN_GUILD_PATRON_ROLE_ID = import.meta.env.VITE_MAIN_GUILD_PATRON_ROLE_ID
-const MAIN_GUILD_COPATRON_ROLE_ID = import.meta.env.VITE_MAIN_GUILD_COPATRON_ROLE_ID
-const DOT_GUILD_DOT_ROLE_ID = import.meta.env.VITE_DOT_GUILD_DOT_ROLE_ID
-const DOT_GUILD_STAFF_ROLE_ID = import.meta.env.VITE_DOT_GUILD_STAFF_ROLE_ID
-
 // ID du fondateur (superadmin par défaut)
 const FOUNDER_DISCORD_ID = '462716512252329996'
 
@@ -186,6 +179,7 @@ export class DiscordAuth {
 export function determineUserRoleFromDiscordData(
   userId: string, 
   userRoles: string[], 
+  guildRoles: DiscordRole[], 
   isOwner: boolean,
   guildId: string
 ): {
@@ -206,25 +200,36 @@ export function determineUserRoleFromDiscordData(
     return { role: 'patron', roleLevel: 4, roleName: 'Patron' }
   }
 
-  // Vérifier les rôles spécifiques par ID selon la guilde
-  if (guildId === MAIN_GUILD_ID) {
-    // Guilde principale
-    if (userRoles.includes(MAIN_GUILD_STAFF_ROLE_ID)) {
-      return { role: 'superviseur', roleLevel: 6, roleName: 'Staff' }
-    }
-    if (userRoles.includes(MAIN_GUILD_PATRON_ROLE_ID)) {
-      return { role: 'patron', roleLevel: 4, roleName: 'Patron' }
-    }
-    if (userRoles.includes(MAIN_GUILD_COPATRON_ROLE_ID)) {
-      return { role: 'co_patron', roleLevel: 3, roleName: 'Co-Patron' }
-    }
-  } else if (guildId === DOT_GUILD_ID) {
-    // Guilde DOT
-    if (userRoles.includes(DOT_GUILD_STAFF_ROLE_ID)) {
-      return { role: 'superviseur', roleLevel: 6, roleName: 'Staff DOT' }
-    }
-    if (userRoles.includes(DOT_GUILD_DOT_ROLE_ID)) {
-      return { role: 'dot', roleLevel: 5, roleName: 'DOT' }
+  // Créer un mapping des IDs de rôles vers les noms
+  const roleIdToName = guildRoles.reduce((acc, role) => {
+    acc[role.id] = role.name.toLowerCase()
+    return acc
+  }, {} as Record<string, string>)
+
+  // Vérifier les rôles par priorité (du plus élevé au plus bas)
+  const roleChecks = [
+    { keywords: ['superadmin', 'super admin', 'super-admin', 'fondateur', 'founder'], role: 'superadmin', level: 7, name: 'SuperAdmin' },
+    { keywords: ['superviseur', 'supervisor', 'staff', 'admin', 'administrateur', 'moderateur', 'mod'], role: 'superviseur', level: 6, name: 'Superviseur' },
+    { keywords: ['dot', 'directeur', 'direction', 'fiscal', 'tresorier'], role: 'dot', level: 5, name: 'DOT' },
+    { keywords: ['patron', 'owner', 'propriétaire', 'ceo', 'boss', 'chef', 'directeur général'], role: 'patron', level: 4, name: 'Patron' },
+    { keywords: ['co-patron', 'copatron', 'co patron', 'vice', 'adjoint', 'vice-président', 'sous-chef'], role: 'co_patron', level: 3, name: 'Co-Patron' },
+    { keywords: ['manager', 'responsable', 'chef équipe', 'team lead'], role: 'co_patron', level: 2, name: 'Manager' },
+    { keywords: ['employee', 'employé', 'membre', 'worker', 'staff member'], role: 'employee', level: 1, name: 'Employé' }
+  ]
+
+  // Parcourir les rôles de l'utilisateur
+  for (const roleId of userRoles) {
+    const roleName = roleIdToName[roleId] || ''
+    
+    // Vérifier chaque type de rôle
+    for (const check of roleChecks) {
+      if (check.keywords.some(keyword => roleName.includes(keyword))) {
+        return { 
+          role: check.role, 
+          roleLevel: check.level, 
+          roleName: check.name 
+        }
+      }
     }
   }
 
@@ -240,17 +245,13 @@ export async function getHighestRoleFromAllGuilds(
   roleLevel: number
   roleName: string
   guildName: string
-  allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[]
 }> {
   let highestRole = { 
     role: 'employee', 
     roleLevel: 1, 
     roleName: 'Employé',
-    guildName: 'Aucune',
-    allGuildRoles: []
+    guildName: 'Aucune'
   }
-  
-  const allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[] = []
 
   // Le fondateur est toujours superadmin
   if (userId === FOUNDER_DISCORD_ID) {
@@ -258,8 +259,7 @@ export async function getHighestRoleFromAllGuilds(
       role: 'superadmin',
       roleLevel: 7,
       roleName: 'Fondateur',
-      guildName: 'Système',
-      allGuildRoles
+      guildName: 'Système'
     }
   }
   
@@ -272,46 +272,26 @@ export async function getHighestRoleFromAllGuilds(
     try {
       // Récupérer les rôles de l'utilisateur dans cette guilde
       const userRoles = await DiscordAuth.getUserRolesInGuild(userId, guild.id)
-      
-      // Stocker les informations de rôles pour cette guilde
-      const guildRoleInfo = {
-        guildId: guild.id,
-        guildName: guild.name,
-        roles: userRoles,
-        userRole: null as any
-      }
+      const guildRoles = await DiscordAuth.getGuildRoles(guild.id)
       
       const roleInfo = determineUserRoleFromDiscordData(
         userId, 
         userRoles, 
+        guildRoles, 
         guild.owner, 
         guild.id
       )
       
-      guildRoleInfo.userRole = roleInfo
-      allGuildRoles.push(guildRoleInfo)
-      
       if (roleInfo.roleLevel > highestRole.roleLevel) {
         highestRole = {
           ...roleInfo,
-          guildName: guild.name,
-          allGuildRoles
+          guildName: guild.name
         }
       }
     } catch (error) {
       console.warn(`Error processing guild ${guild.name}:`, error)
-      // Ajouter même en cas d'erreur pour le debug
-      allGuildRoles.push({
-        guildId: guild.id,
-        guildName: guild.name,
-        roles: [],
-        userRole: { role: 'employee', roleLevel: 1, roleName: 'Erreur' }
-      })
     }
   }
   
-  return {
-    ...highestRole,
-    allGuildRoles
-  }
+  return highestRole
 }
