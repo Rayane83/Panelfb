@@ -1,0 +1,232 @@
+<% include('base', { title: title, user: user }, function(body) { %>
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- En-tête -->
+        <div class="md:flex md:items-center md:justify-between">
+            <div class="flex-1 min-w-0">
+                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                    Tableau de bord
+                </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Bienvenue, <%= user.username %> - Rôle: <%= user.role %>
+                </p>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="mt-8">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- Total Entreprises -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i data-lucide="building-2" class="h-6 w-6 text-gray-400"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">
+                                        Entreprises
+                                    </dt>
+                                    <dd class="text-lg font-medium text-gray-900">
+                                        <%= stats.total_enterprises %>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Employés -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i data-lucide="users" class="h-6 w-6 text-gray-400"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">
+                                        Employés
+                                    </dt>
+                                    <dd class="text-lg font-medium text-gray-900">
+                                        <%= stats.total_employees %>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CA Mensuel -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i data-lucide="dollar-sign" class="h-6 w-6 text-gray-400"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">
+                                        CA Mensuel
+                                    </dt>
+                                    <dd class="text-lg font-medium text-gray-900">
+                                        <%= new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(stats.monthly_ca) %>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des entreprises -->
+        <div class="mt-8">
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Vos Entreprises
+                    </h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                        Liste des entreprises auxquelles vous avez accès
+                    </p>
+                </div>
+                <ul class="divide-y divide-gray-200">
+                    <% if (enterprises && enterprises.length > 0) { %>
+                        <% enterprises.forEach(function(enterprise) { %>
+                        <li>
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10">
+                                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <i data-lucide="building-2" class="h-5 w-5 text-indigo-600"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            <%= enterprise.name %>
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            <%= enterprise.type || 'SARL' %> - Créée le <%= new Date(enterprise.created_at).toLocaleDateString('fr-FR') %>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Actif
+                                    </span>
+                                    <button class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                        Voir détails
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <% }); %>
+                    <% } else { %>
+                        <li>
+                            <div class="px-4 py-8 text-center">
+                                <i data-lucide="building-2" class="mx-auto h-12 w-12 text-gray-400"></i>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune entreprise</h3>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Vous n'avez accès à aucune entreprise pour le moment.
+                                </p>
+                            </div>
+                        </li>
+                    <% } %>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="mt-8">
+            <div class="bg-white shadow sm:rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Actions rapides
+                    </h3>
+                    <div class="mt-5">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <% if (['superadmin', 'superviseur', 'dot', 'patron', 'co_patron'].includes(user.role)) { %>
+                            <a href="/dotations" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
+                                <div>
+                                    <span class="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-700 ring-4 ring-white">
+                                        <i data-lucide="calculator" class="h-6 w-6"></i>
+                                    </span>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-lg font-medium">
+                                        <span class="absolute inset-0"></span>
+                                        Dotations
+                                    </h3>
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Gérer les dotations et calculs de salaires
+                                    </p>
+                                </div>
+                            </a>
+                            <% } %>
+
+                            <% if (['superadmin', 'superviseur', 'dot'].includes(user.role)) { %>
+                            <a href="/impots" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
+                                <div>
+                                    <span class="rounded-lg inline-flex p-3 bg-green-50 text-green-700 ring-4 ring-white">
+                                        <i data-lucide="receipt" class="h-6 w-6"></i>
+                                    </span>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-lg font-medium">
+                                        <span class="absolute inset-0"></span>
+                                        Calculs Fiscaux
+                                    </h3>
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Simulations et calculs d'impôts
+                                    </p>
+                                </div>
+                            </a>
+                            <% } %>
+
+                            <% if (['superadmin', 'superviseur'].includes(user.role)) { %>
+                            <a href="/staff" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
+                                <div>
+                                    <span class="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-700 ring-4 ring-white">
+                                        <i data-lucide="users" class="h-6 w-6"></i>
+                                    </span>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-lg font-medium">
+                                        <span class="absolute inset-0"></span>
+                                        Gestion Staff
+                                    </h3>
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Gérer les employés et grades
+                                    </p>
+                                </div>
+                            </a>
+                            <% } %>
+
+                            <% if (user.role === 'superadmin') { %>
+                            <a href="/superadmin" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
+                                <div>
+                                    <span class="rounded-lg inline-flex p-3 bg-red-50 text-red-700 ring-4 ring-white">
+                                        <i data-lucide="settings" class="h-6 w-6"></i>
+                                    </span>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-lg font-medium">
+                                        <span class="absolute inset-0"></span>
+                                        Administration
+                                    </h3>
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Configuration système
+                                    </p>
+                                </div>
+                            </a>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<% }) %>
