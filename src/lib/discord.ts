@@ -1,8 +1,9 @@
-const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID
-const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI || `${window.location.origin}/auth/callback`
-const DISCORD_API_BASE = 'https://discord.com/api/v10'
-const DISCORD_CLIENT_SECRET = import.meta.env.VITE_DISCORD_CLIENT_SECRET
+// Configuration Discord OAuth
+const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || '1402231031804723210'
+const DISCORD_CLIENT_SECRET = import.meta.env.VITE_DISCORD_CLIENT_SECRET || 'LgKUe7k1mwTnj1qlodKcYKnoRPVB6QoG'
 const DISCORD_BOT_TOKEN = import.meta.env.VITE_DISCORD_BOT_TOKEN
+const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI || 'https://flashbackfa-entreprise.fr/auth/callback'
+const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 // ID du fondateur (superadmin par défaut)
 const FOUNDER_DISCORD_ID = '462716512252329996'
@@ -64,35 +65,48 @@ export class DiscordAuth {
   }
 
   static async exchangeCodeForToken(code: string): Promise<string> {
-    if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-      throw new Error('Discord OAuth credentials not configured')
-    }
-
-    const response = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: DISCORD_CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: DISCORD_REDIRECT_URI,
-      }),
+    console.log('Exchanging code for token with:', {
+      client_id: DISCORD_CLIENT_ID,
+      redirect_uri: DISCORD_REDIRECT_URI,
+      code: code.substring(0, 10) + '...'
     })
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('Token exchange error:', errorData)
-      throw new Error(`Failed to exchange code for token: ${response.status}`)
-    }
+    try {
+      const response = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: DISCORD_CLIENT_ID,
+          client_secret: DISCORD_CLIENT_SECRET,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: DISCORD_REDIRECT_URI,
+        }),
+      })
 
-    const data = await response.json()
-    if (!data.access_token) {
-      throw new Error('No access token received')
+      console.log('Token exchange response status:', response.status)
+      
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('Token exchange error response:', errorData)
+        throw new Error(`Failed to exchange code for token: ${response.status} - ${errorData}`)
+      }
+
+      const data = await response.json()
+      console.log('Token exchange successful')
+      
+      if (!data.access_token) {
+        console.error('No access token in response:', data)
+        throw new Error('No access token received')
+      }
+      
+      return data.access_token
+    } catch (error) {
+      console.error('Token exchange failed:', error)
+      throw error
     }
-    return data.access_token
   }
 
   static async getUser(token: string): Promise<DiscordUser> {

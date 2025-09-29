@@ -8,7 +8,7 @@ export function AuthPage() {
   const { login, isLoading } = useAuth()
   
   // Vérifier la configuration Discord
-  const isDiscordConfigured = import.meta.env.VITE_DISCORD_CLIENT_ID && import.meta.env.VITE_DISCORD_CLIENT_SECRET
+  const isDiscordConfigured = true // Configuration hardcodée pour le déploiement
 
   const handleLogin = async () => {
     await login()

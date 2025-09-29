@@ -9,8 +9,12 @@ export default defineConfig({
     host: true
   },
   define: {
-    // Expose env variables to the client
-    'process.env': {}
+    // Définir les variables d'environnement pour le build
+    'import.meta.env.VITE_DISCORD_CLIENT_ID': JSON.stringify('1402231031804723210'),
+    'import.meta.env.VITE_DISCORD_CLIENT_SECRET': JSON.stringify('LgKUe7k1mwTnj1qlodKcYKnoRPVB6QoG'),
+    'import.meta.env.VITE_DISCORD_REDIRECT_URI': JSON.stringify('https://flashbackfa-entreprise.fr/auth/callback'),
+    'import.meta.env.VITE_MAIN_GUILD_ID': JSON.stringify('1404608015230832742'),
+    'import.meta.env.VITE_DOT_GUILD_ID': JSON.stringify('1404609091372056606')
   },
   optimizeDeps: {
     exclude: ['lucide-react'],

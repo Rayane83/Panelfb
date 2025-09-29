@@ -34,26 +34,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // Gérer le callback OAuth
     const handleOAuthCallback = async () => {
+      console.log('Current URL:', window.location.href)
+      console.log('Pathname:', window.location.pathname)
+      
       const urlParams = new URLSearchParams(window.location.search)
       const code = urlParams.get('code')
       const error = urlParams.get('error')
       
       if (error) {
-        console.error('OAuth error:', error)
+        console.error('OAuth error:', error, urlParams.get('error_description'))
         setIsLoading(false)
         window.history.replaceState({}, '', '/auth')
         return
       }
       
       if (code && window.location.pathname === '/auth/callback') {
+        console.log('Processing OAuth callback with code:', code)
         setIsLoading(true)
         try {
           // Échanger le code contre un token
+          console.log('Exchanging code for token...')
           const token = await DiscordAuth.exchangeCodeForToken(code)
+          console.log('Token received, fetching user data...')
           
           // Récupérer les informations utilisateur
           const discordUser = await DiscordAuth.getUser(token)
+          console.log('Discord user:', discordUser)
           const guilds = await DiscordAuth.getUserGuilds(token)
+          console.log('User guilds:', guilds)
           
           // Filtrer et traiter seulement les guildes configurées
           const configuredGuilds = guilds.filter(guild => 
@@ -72,6 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           // Déterminer le rôle le plus élevé parmi toutes les guildes configurées
           const highestRole = await getHighestRoleFromAllGuilds(discordUser.id, configuredGuilds)
+          console.log('Highest role determined:', highestRole)
           
           const userData: User = {
             id: discordUser.id,
@@ -86,6 +95,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             allGuildRoles: highestRole.allGuildRoles
           }
           
+          console.log('Setting user data:', userData)
           setUser(userData)
           localStorage.setItem('discord_user', JSON.stringify(userData))
           
@@ -96,7 +106,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
         } catch (error) {
           console.error('OAuth callback error:', error)
-          alert('Erreur d\'authentification Discord. Veuillez réessayer.')
+          console.error('Error details:', error)
+          alert('Erreur d\'authentification Discord: ' + (error as Error).message)
           window.history.replaceState({}, '', '/auth')
         } finally {
           setIsLoading(false)
@@ -111,11 +122,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true)
     
     try {
+      console.log('Initiating Discord login...')
       // Rediriger vers Discord OAuth
       const authUrl = DiscordAuth.getAuthUrl()
+      console.log('Redirecting to:', authUrl)
       window.location.href = authUrl
     } catch (error) {
       console.error('Login error:', error)
+      console.error('Error details:', error)
       alert('Erreur lors de la connexion Discord: ' + (error as Error).message)
       setIsLoading(false)
     }
