@@ -11,21 +11,21 @@
   NODE_VERSION = "18"
 
 [[headers]]
-  for = "*.js"
+  for = "/assets/*.js"
   [headers.values]
-    Content-Type = "application/javascript; charset=utf-8"
+    Content-Type = "text/javascript"
 
 [[headers]]
-  for = "*.mjs"
+  for = "/assets/*.mjs"
   [headers.values]
-    Content-Type = "application/javascript; charset=utf-8"
+    Content-Type = "text/javascript"
 
 [[headers]]
-  for = "*.tsx"
+  for = "*.css"
   [headers.values]
-    Content-Type = "application/javascript; charset=utf-8"
+    Content-Type = "text/css"
 
 [[headers]]
-  for = "*.ts"
+  for = "*.json"
   [headers.values]
-    Content-Type = "application/javascript; charset=utf-8"
+    Content-Type = "application/json"</parameter>
