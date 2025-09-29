@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "npm install",
-    "postinstall": "echo 'Installation completed'"
+    "build": "echo 'Build completed - Node.js application ready'"
   },
   "dependencies": {
     "express": "^4.18.2",
