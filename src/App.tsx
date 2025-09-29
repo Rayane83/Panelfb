@@ -6,10 +6,10 @@ import { usePermissions } from './hooks/usePermissions'
 import { Header } from './components/layout/Header'
 import { Dashboard } from './pages/Dashboard'
 import { AuthPage } from './pages/AuthPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
 import { SuperAdminPage } from './pages/SuperAdminPage'
 import { StaffPage } from './pages/StaffPage'
-import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
