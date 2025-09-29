@@ -4,8 +4,8 @@
   "description": "FlashbackFA Enterprise Management System",
   "main": "index.html",
   "scripts": {
-    "start": "python -m http.server 8000",
-    "dev": "python -m http.server 8000",
+    "start": "vite",
+    "dev": "vite",
     "build": "npm install",
     "postinstall": "echo 'Installation completed'"
   },
