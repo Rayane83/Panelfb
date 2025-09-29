@@ -10,19 +10,6 @@ export interface User {
   currentGuild?: Guild
   role: UserRole
   roleLevel: number
-  enterprises: Enterprise[]
-}
-
-export interface Enterprise {
-  id: string
-  guild_id: string
-  name: string
-  type: string
-  description?: string
-  owner_discord_id: string
-  settings: any
-  created_at: string
-  updated_at: string
 }
 
 export interface Guild {

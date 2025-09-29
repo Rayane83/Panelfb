@@ -1,701 +1,481 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Badge } from '../components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { useState } from 'react'
 import { 
-  Settings, 
-  Server, 
-  Building2, 
-  DollarSign, 
   Shield, 
-  Trash2,
-  Plus,
-  Save,
-  TestTube,
-  RotateCcw
-} from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+  Building, 
+  Receipt, 
+  Shuffle, 
+  Users, 
+  Settings, 
+  AlertTriangle,
+  Server,
+  Database
+} from 'lucide-react'
 
-interface DiscordConfig {
-  principalGuildId?: string;
-  dot?: { guildId?: string };
-  enterprises?: Array<{
-    key: string;
-    name: string;
-    guildId: string;
-    role_id: string;
-    employee_role_id?: string;
-  }>;
-}
-
-interface Enterprise {
-  id: string;
-  guild_id: string;
-  key: string;
-  name: string;
-  discord_role_id: string | null;
-  discord_guild_id: string | null;
-}
-
-interface TaxBracket {
-  id: string;
-  guild_id: string;
-  min_profit: number;
-  max_profit: number;
-  tax_rate: number;
-  max_employee_salary: number;
-  max_boss_salary: number;
-  max_employee_bonus: number;
-  max_boss_bonus: number;
-}
-
-const SuperAdminPage: React.FC = () => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
+export function SuperAdminPage() {
+  const [newTaxRate, setNewTaxRate] = useState('')
   
-  // États pour les différentes sections
-  const [discordConfig, setDiscordConfig] = useState<DiscordConfig>({});
-  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
-  const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([]);
-  
-  // États pour les formulaires
-  const [newEnterprise, setNewEnterprise] = useState({
-    guild_id: '',
-    key: '',
-    name: '',
-    discord_role_id: '',
-    discord_guild_id: ''
-  });
+  const enterprises = [
+    { id: '1', name: 'Tech Corp', owner: 'Jean Dupont', status: 'Active', employees: 15 },
+    { id: '2', name: 'Service Plus', owner: 'Marie Martin', status: 'Active', employees: 8 },
+    { id: '3', name: 'Digital Agency', owner: 'Pierre Durant', status: 'Suspended', employees: 22 }
+  ]
 
-  const [newTaxBracket, setNewTaxBracket] = useState({
-    guild_id: '',
-    min_profit: 0,
-    max_profit: 0,
-    tax_rate: 0,
-    max_employee_salary: 0,
-    max_boss_salary: 0,
-    max_employee_bonus: 0,
-    max_boss_bonus: 0
-  });
+  const taxBrackets = [
+    { min: 0, max: 10000, rate: 0 },
+    { min: 10000, max: 25000, rate: 11 },
+    { min: 25000, max: 50000, rate: 30 },
+    { min: 50000, max: 100000, rate: 41 },
+    { min: 100000, max: Infinity, rate: 45 }
+  ]
 
-  const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Charger la config Discord
-      const { data: discordConfigData } = await supabase
-        .from('discord_config')
-        .select('data')
-        .eq('id', 'default')
-        .single();
-      
-      if (discordConfigData?.data) {
-        setDiscordConfig(discordConfigData.data as DiscordConfig);
-      }
-
-      // Charger les entreprises
-      const { data: enterprisesData } = await supabase
-        .from('enterprises')
-        .select('*')
-        .order('guild_id', { ascending: true });
-      
-      setEnterprises(enterprisesData || []);
-
-      // Charger les tranches fiscales
-      const { data: taxBracketsData } = await supabase
-        .from('tax_brackets')
-        .select('*')
-        .order('guild_id', { ascending: true })
-        .order('min_profit', { ascending: true });
-      
-      setTaxBrackets(taxBracketsData || []);
-
-    } catch (error) {
-      console.error('Erreur lors du chargement:', error);
-      showToast('error', 'Impossible de charger les données');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveDiscordConfig = async () => {
-    try {
-      const { error } = await supabase
-        .from('discord_config')
-        .upsert({
-          id: 'default',
-          data: discordConfig as any
-        });
-
-      if (error) throw error;
-
-      showToast('success', 'Configuration Discord sauvegardée');
-    } catch (error) {
-      console.error('Erreur:', error);
-      showToast('error', 'Erreur lors de la sauvegarde');
-    }
-  };
-
-  const saveEnterprise = async () => {
-    try {
-      const { error } = await supabase
-        .from('enterprises')
-        .insert(newEnterprise);
-
-      if (error) throw error;
-
-      showToast('success', 'Entreprise créée');
-      
-      setNewEnterprise({
-        guild_id: '',
-        key: '',
-        name: '',
-        discord_role_id: '',
-        discord_guild_id: ''
-      });
-      
-      loadData();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showToast('error', 'Erreur lors de la création');
-    }
-  };
-
-  const deleteEnterprise = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette entreprise ?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('enterprises')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      showToast('success', 'Entreprise supprimée');
-      
-      loadData();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showToast('error', 'Erreur lors de la suppression');
-    }
-  };
-
-  const saveTaxBracket = async () => {
-    try {
-      const { error } = await supabase
-        .from('tax_brackets')
-        .insert(newTaxBracket);
-
-      if (error) throw error;
-
-      showToast('success', 'Tranche fiscale créée');
-      
-      setNewTaxBracket({
-        guild_id: '',
-        min_profit: 0,
-        max_profit: 0,
-        tax_rate: 0,
-        max_employee_salary: 0,
-        max_boss_salary: 0,
-        max_employee_bonus: 0,
-        max_boss_bonus: 0
-      });
-      
-      loadData();
-    } catch (error) {
-      console.error('Erreur:', error);
-      showToast('error', 'Erreur lors de la création');
-    }
-  };
-
-  const testDiscordHealth = async () => {
-    try {
-      showToast('success', 'Test en cours...');
-      
-      // Appeler la fonction Edge
-      const { data, error } = await supabase.functions.invoke('discord-health');
-      
-      if (error) throw error;
-      
-      showToast('success', 'Test Discord réussi');
-    } catch (error) {
-      console.error('Erreur test Discord:', error);
-      showToast('error', 'Échec du test Discord');
-    }
-  };
-
-  const syncDiscordRoles = async () => {
-    try {
-      showToast('success', 'Synchronisation...');
-      
-      const { data, error } = await supabase.functions.invoke('discord-sync');
-      
-      if (error) throw error;
-      
-      showToast('success', 'Synchronisation terminée');
-    } catch (error) {
-      console.error('Erreur sync:', error);
-      showToast('error', 'Échec de la synchronisation');
-    }
-  };
-
-  // Vérifier les permissions
-  if (!user || (user.role !== 'superadmin' && user.role !== 'superviseur')) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-2">Accès Refusé</h2>
-          <p className="text-muted-foreground">
-            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Chargement de l'administration...</p>
-        </div>
-      </div>
-    );
-  }
+  const systemStats = [
+    { label: 'Entreprises Actives', value: enterprises.filter(e => e.status === 'Active').length, color: 'text-green-600' },
+    { label: 'Utilisateurs Total', value: enterprises.reduce((sum, e) => sum + e.employees, 0), color: 'text-blue-600' },
+    { label: 'Taux Fiscal Moyen', value: '28.5%', color: 'text-purple-600' },
+    { label: 'Uptime Système', value: '99.8%', color: 'text-green-600' }
+  ]
 
   return (
     <div className="container mx-auto px-4 py-6">
-      {toast && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
-          toast.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-          'bg-red-100 text-red-800 border border-red-200'
-        }`}>
-          <span>{toast.message}</span>
+      <div className="mb-6 flex items-center space-x-3">
+        <div className="p-2 bg-red-100 rounded-lg">
+          <Shield className="h-6 w-6 text-red-600" />
         </div>
-      )}
-
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Administration SuperStaff</h1>
-        <p className="text-muted-foreground">
-          Panel de contrôle complet - Accès SuperAdmin
-        </p>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-red-600">Administration Système</h1>
+          <p className="text-muted-foreground">
+            Panel de contrôle complet - Accès Fondateur et Superviseurs
+          </p>
+        </div>
       </div>
 
-      <Tabs defaultValue="discord" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="discord">Discord</TabsTrigger>
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        {systemStats.map((stat, index) => (
+          <Card key={index}>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold mb-2 text-center">{stat.value}</div>
+              <p className="text-sm text-muted-foreground text-center">{stat.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Tabs defaultValue="enterprises" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="enterprises">Entreprises</TabsTrigger>
-          <TabsTrigger value="tax-brackets">Paliers</TabsTrigger>
-          <TabsTrigger value="blanchiment">Blanchiment</TabsTrigger>
+          <TabsTrigger value="discord">Discord</TabsTrigger>
+          <TabsTrigger value="taxes">Impôts</TabsTrigger>
+          <TabsTrigger value="laundering">Blanchiment</TabsTrigger>
+          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           <TabsTrigger value="security">Sécurité</TabsTrigger>
+          <TabsTrigger value="system">Système</TabsTrigger>
         </TabsList>
 
-        {/* Configuration Discord */}
-        <TabsContent value="discord">
+        <TabsContent value="enterprises" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                Configuration Discord
+              <CardTitle className="flex items-center space-x-2">
+                <Building className="h-5 w-5" />
+                <span>Gestion des Entreprises</span>
               </CardTitle>
               <CardDescription>
-                Gérez les paramètres Discord et les webhooks
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="principal-guild">Guilde Principale</Label>
-                  <Input
-                    id="principal-guild"
-                    value={discordConfig.principalGuildId || ''}
-                    onChange={(e) => setDiscordConfig(prev => ({
-                      ...prev,
-                      principalGuildId: e.target.value
-                    }))}
-                    placeholder="ID de la guilde principale"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dot-guild">Guilde DOT</Label>
-                  <Input
-                    id="dot-guild"
-                    value={discordConfig.dot?.guildId || ''}
-                    onChange={(e) => setDiscordConfig(prev => ({
-                      ...prev,
-                      dot: { ...prev.dot, guildId: e.target.value }
-                    }))}
-                    placeholder="ID de la guilde DOT"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button onClick={saveDiscordConfig}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Sauvegarder
-                </Button>
-                <Button variant="outline" onClick={testDiscordHealth}>
-                  <TestTube className="h-4 w-4 mr-2" />
-                  Tester Health
-                </Button>
-                <Button variant="outline" onClick={syncDiscordRoles}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Sync Rôles
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Gestion des entreprises */}
-        <TabsContent value="enterprises">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Ajouter une Entreprise
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Guilde ID</Label>
-                    <Input
-                      value={newEnterprise.guild_id}
-                      onChange={(e) => setNewEnterprise(prev => ({
-                        ...prev,
-                        guild_id: e.target.value
-                      }))}
-                      placeholder="ID de la guilde"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Clé</Label>
-                    <Input
-                      value={newEnterprise.key}
-                      onChange={(e) => setNewEnterprise(prev => ({
-                        ...prev,
-                        key: e.target.value
-                      }))}
-                      placeholder="Clé unique"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nom</Label>
-                    <Input
-                      value={newEnterprise.name}
-                      onChange={(e) => setNewEnterprise(prev => ({
-                        ...prev,
-                        name: e.target.value
-                      }))}
-                      placeholder="Nom de l'entreprise"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Rôle Discord ID</Label>
-                    <Input
-                      value={newEnterprise.discord_role_id}
-                      onChange={(e) => setNewEnterprise(prev => ({
-                        ...prev,
-                        discord_role_id: e.target.value
-                      }))}
-                      placeholder="ID du rôle Discord"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Guilde Discord ID</Label>
-                    <Input
-                      value={newEnterprise.discord_guild_id}
-                      onChange={(e) => setNewEnterprise(prev => ({
-                        ...prev,
-                        discord_guild_id: e.target.value
-                      }))}
-                      placeholder="ID de la guilde Discord"
-                    />
-                  </div>
-                </div>
-                <Button onClick={saveEnterprise}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter l'Entreprise
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Entreprises Existantes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2 font-medium">Guilde</th>
-                        <th className="text-left p-2 font-medium">Clé</th>
-                        <th className="text-left p-2 font-medium">Nom</th>
-                        <th className="text-left p-2 font-medium">Rôle Discord</th>
-                        <th className="text-left p-2 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {enterprises.map((enterprise) => (
-                        <tr key={enterprise.id} className="border-b">
-                          <td className="p-2">
-                            <Badge variant="outline">{enterprise.guild_id}</Badge>
-                          </td>
-                          <td className="p-2">{enterprise.key}</td>
-                          <td className="p-2">{enterprise.name}</td>
-                          <td className="p-2">{enterprise.discord_role_id}</td>
-                          <td className="p-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600"
-                              onClick={() => deleteEnterprise(enterprise.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Gestion des paliers fiscaux */}
-        <TabsContent value="tax-brackets">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Ajouter une Tranche Fiscale
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>Guilde ID</Label>
-                    <Input
-                      value={newTaxBracket.guild_id}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        guild_id: e.target.value
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Bénéfice Min (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.min_profit}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        min_profit: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Bénéfice Max (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.max_profit}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        max_profit: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Taux (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newTaxBracket.tax_rate}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        tax_rate: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Sal Max Employé (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.max_employee_salary}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        max_employee_salary: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Sal Max Patron (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.max_boss_salary}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        max_boss_salary: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Prime Max Employé (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.max_employee_bonus}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        max_employee_bonus: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Prime Max Patron (€)</Label>
-                    <Input
-                      type="number"
-                      value={newTaxBracket.max_boss_bonus}
-                      onChange={(e) => setNewTaxBracket(prev => ({
-                        ...prev,
-                        max_boss_bonus: parseFloat(e.target.value) || 0
-                      }))}
-                    />
-                  </div>
-                </div>
-                <Button onClick={saveTaxBracket}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter la Tranche
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Tranches Fiscales Existantes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2 font-medium">Guilde</th>
-                        <th className="text-left p-2 font-medium">Bénéfice Min</th>
-                        <th className="text-left p-2 font-medium">Bénéfice Max</th>
-                        <th className="text-left p-2 font-medium">Taux</th>
-                        <th className="text-left p-2 font-medium">Sal Max Emp</th>
-                        <th className="text-left p-2 font-medium">Sal Max Pat</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {taxBrackets.map((bracket) => (
-                        <tr key={bracket.id} className="border-b">
-                          <td className="p-2">
-                            <Badge variant="outline">{bracket.guild_id}</Badge>
-                          </td>
-                          <td className="p-2">{bracket.min_profit.toLocaleString('fr-FR')} €</td>
-                          <td className="p-2">{bracket.max_profit.toLocaleString('fr-FR')} €</td>
-                          <td className="p-2">
-                            <Badge>{(bracket.tax_rate * 100).toFixed(1)}%</Badge>
-                          </td>
-                          <td className="p-2">{bracket.max_employee_salary.toLocaleString('fr-FR')} €</td>
-                          <td className="p-2">{bracket.max_boss_salary.toLocaleString('fr-FR')} €</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Configuration Blanchiment */}
-        <TabsContent value="blanchiment">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Configuration Blanchiment
-              </CardTitle>
-              <CardDescription>
-                Paramètres globaux et par entreprise pour le blanchiment
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configuration du blanchiment à implémenter...
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Sécurité */}
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Sécurité & RLS
-              </CardTitle>
-              <CardDescription>
-                État des politiques de sécurité et liens Supabase
+                Vue d'ensemble et gestion de toutes les entreprises du système
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Toutes les tables sont protégées par des politiques RLS (Row Level Security).
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" asChild>
-                    <a 
-                      href="https://supabase.com/dashboard/project/pmhktnxqponixycsjcwr" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      Dashboard Supabase
-                    </a>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <a 
-                      href="https://supabase.com/dashboard/project/pmhktnxqponixycsjcwr/auth/users" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      Utilisateurs
-                    </a>
+                {enterprises.map((enterprise) => (
+                  <div key={enterprise.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="font-medium">{enterprise.name}</p>
+                        <Badge className={enterprise.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {enterprise.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Propriétaire: {enterprise.owner} • {enterprise.employees} employés
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm">
+                        Gérer
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Auditer
+                      </Button>
+                      {enterprise.status === 'Active' ? (
+                        <Button variant="outline" size="sm" className="text-red-600">
+                          Suspendre
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" className="text-green-600">
+                          Activer
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button className="w-full mt-4">
+                <Building className="mr-2 h-4 w-4" />
+                Créer Nouvelle Entreprise
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="discord" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Server className="h-5 w-5" />
+                  <span>Configuration Discord</span>
+                </CardTitle>
+                <CardDescription>
+                  Paramètres globaux d'intégration Discord
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client ID Discord</label>
+                  <Input placeholder="123456789012345678" disabled value="••••••••••••5678" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client Secret</label>
+                  <Input type="password" placeholder="Secret Key" disabled value="••••••••••••••••" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Redirect URI</label>
+                  <Input value="https://app.discord-enterprise.com/auth/callback" disabled />
+                </div>
+                <Button variant="outline" className="w-full">
+                  Tester la Connexion
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Rôles et Permissions</CardTitle>
+                <CardDescription>
+                  Mapping des rôles Discord vers les permissions système
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { role: 'Fondateur', permission: 'Accès total + promotion Superviseurs', color: 'bg-red-100 text-red-800' },
+                    { role: 'Superviseur', permission: 'Administration (nommé par Fondateur)', color: 'bg-purple-100 text-purple-800' },
+                    { role: 'DOT', permission: 'Fiscalité inter-entreprises', color: 'bg-blue-100 text-blue-800' },
+                    { role: 'Patron', permission: 'Gestion entreprise', color: 'bg-orange-100 text-orange-800' }
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded">
+                      <Badge className={item.color}>{item.role}</Badge>
+                      <span className="text-sm text-muted-foreground">{item.permission}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" className="w-full mt-4">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurer les Rôles
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="taxes" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Receipt className="h-5 w-5" />
+                  <span>Tranches Fiscales Globales</span>
+                </CardTitle>
+                <CardDescription>
+                  Configuration des taux d'imposition pour tout le système
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {taxBrackets.map((bracket, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <p className="text-sm font-medium">
+                          €{bracket.min.toLocaleString()} - {bracket.max === Infinity ? '∞' : `€${bracket.max.toLocaleString()}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline">{bracket.rate}%</Badge>
+                        <Button variant="outline" size="sm">
+                          Modifier
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex space-x-2 mt-4">
+                  <Input 
+                    placeholder="Nouveau taux (%)"
+                    value={newTaxRate}
+                    onChange={(e) => setNewTaxRate(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button>
+                    Ajouter
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramètres Fiscaux Avancés</CardTitle>
+                <CardDescription>
+                  Configuration des règles fiscales spéciales
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Taux de TVA par défaut</span>
+                    <Input className="w-20" value="20%" disabled />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Seuil micro-entreprise</span>
+                    <Input className="w-32" value="€176,200" disabled />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Cotisations sociales</span>
+                    <Input className="w-20" value="23%" disabled />
+                  </div>
+                </div>
+                <Button className="w-full">
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Sauvegarder les Paramètres
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="laundering" className="space-y-6">
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 text-yellow-800">
+                <Shuffle className="h-5 w-5" />
+                <span>Blanchiment d'Argent Global</span>
+              </CardTitle>
+              <CardDescription className="text-yellow-700">
+                Configuration des paramètres de blanchiment au niveau système
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Seuil minimum global</span>
+                    <Input className="w-32" value="€5,000" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Limite quotidienne max</span>
+                    <Input className="w-32" value="€500,000" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Taux de commission</span>
+                    <Input className="w-20" value="2.5%" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded">
+                    <p className="text-sm text-red-800 font-medium">Opérations Suspectes</p>
+                    <p className="text-xs text-red-600">Surveillance automatique active</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-sm text-blue-800 font-medium">Conformité</p>
+                    <p className="text-xs text-blue-600">Rapports générés automatiquement</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex space-x-2 mt-4">
+                <Button variant="outline" className="flex-1">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Rapports Surveillance
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <Database className="mr-2 h-4 w-4" />
+                  Export Conformité
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>Gestion Globale des Utilisateurs</span>
+              </CardTitle>
+              <CardDescription>
+                Administration des comptes utilisateurs à travers tout le système
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-4 border rounded-lg text-center">
+                    <div className="text-2xl font-bold text-green-600">142</div>
+                    <p className="text-sm text-muted-foreground">Utilisateurs Actifs</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <div className="text-2xl font-bold text-blue-600">8</div>
+                    <p className="text-sm text-muted-foreground">Administrateurs</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <div className="text-2xl font-bold text-red-600">3</div>
+                    <p className="text-sm text-muted-foreground">Comptes Suspendus</p>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Button className="flex-1">
+                    <Users className="mr-2 h-4 w-4" />
+                    Voir Tous les Utilisateurs
+                  </Button>
+                  <Button variant="outline" className="flex-1">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Audit des Permissions
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5" />
+                  <span>Sécurité du Système</span>
+                </CardTitle>
+                <CardDescription>
+                  Monitoring de sécurité et contrôles d'accès
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
+                    <span className="text-sm font-medium text-green-800">Système sécurisé</span>
+                    <Badge className="bg-green-100 text-green-800">OK</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <span className="text-sm font-medium text-yellow-800">Tentatives de connexion échouées</span>
+                    <Badge className="bg-yellow-100 text-yellow-800">7</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
+                    <span className="text-sm font-medium text-red-800">Alertes de sécurité</span>
+                    <Badge className="bg-red-100 text-red-800">2</Badge>
+                  </div>
+                </div>
+                <Button className="w-full">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Voir Logs de Sécurité
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>HWIP Administration</CardTitle>
+                <CardDescription>
+                  Contrôle d'accès basé sur le matériel
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Dispositifs autorisés: 24</p>
+                  <p className="text-sm font-medium">Dispositifs bloqués: 3</p>
+                  <p className="text-sm font-medium">Nouveaux dispositifs: 1</p>
+                </div>
+                <Button className="w-full" variant="outline">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Gérer HWIP
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="system" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Server className="h-5 w-5" />
+                <span>État du Système</span>
+              </CardTitle>
+              <CardDescription>
+                Monitoring et maintenance du système
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <h4 className="font-medium">Services</h4>
+                  {[
+                    { name: 'API Principal', status: 'Opérationnel', color: 'text-green-600' },
+                    { name: 'Base de Données', status: 'Opérationnel', color: 'text-green-600' },
+                    { name: 'Discord OAuth', status: 'Opérationnel', color: 'text-green-600' },
+                    { name: 'Système de Fichiers', status: 'Maintenance', color: 'text-yellow-600' }
+                  ].map((service, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-sm">{service.name}</span>
+                      <span className={`text-sm font-medium ${service.color}`}>{service.status}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-3">
+                  <h4 className="font-medium">Ressources</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>CPU Usage</span>
+                      <span>23%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>RAM Usage</span>
+                      <span>67%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Storage</span>
+                      <span>45%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex space-x-2 mt-6">
+                <Button variant="outline" className="flex-1">
+                  <Database className="mr-2 h-4 w-4" />
+                  Backup Manuel
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Maintenance
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  );
-};
-
-export default SuperAdminPage;
+  )
+}

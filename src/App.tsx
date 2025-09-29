@@ -9,6 +9,7 @@ import { AuthPage } from './pages/AuthPage'
 import { CompanyConfigPage } from './pages/CompanyConfigPage'
 import { SuperAdminPage } from './pages/SuperAdminPage'
 import { HWIPAdminPage } from './pages/HWIPAdminPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 const queryClient = new QueryClient()
 
@@ -73,6 +74,10 @@ function AppRoutes() {
       <Route 
         path="/auth" 
         element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />} 
+      />
+      <Route 
+        path="/auth/callback" 
+        element={<AuthCallbackPage />} 
       />
       <Route 
         path="/" 
