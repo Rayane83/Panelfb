@@ -40,51 +40,13 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Mapping des rôles Discord
 const ROLE_MAPPING = {
-  [process.env.VITE_SUPERADMIN_ROLE_ID]: 'superadmin',
-  [process.env.VITE_MAIN_GUILD_STAFF_ROLE_ID]: 'superviseur',
-  [process.env.VITE_DOT_GUILD_STAFF_ROLE_ID]: 'superviseur',
-  [process.env.VITE_DOT_GUILD_DOT_ROLE_ID]: 'dot',
-  [process.env.VITE_MAIN_GUILD_PATRON_ROLE_ID]: 'patron',
-  [process.env.VITE_MAIN_GUILD_COPATRON_ROLE_ID]: 'co_patron'
+  '987654321098765432': 'superadmin',
+  '987654321098765433': 'superviseur',
+  '987654321098765434': 'dot',
+  '987654321098765435': 'patron',
+  '987654321098765436': 'co_patron',
+  '987654321098765437': 'employee'
 };
-
-// Fonction pour déterminer le rôle utilisateur
-function determineUserRole(userRoles, isOwner, guildId) {
-  // Vérifier les rôles par priorité (du plus élevé au plus bas)
-  if (process.env.VITE_SUPERADMIN_ROLE_ID && userRoles.includes(process.env.VITE_SUPERADMIN_ROLE_ID)) {
-    return 'superadmin';
-  }
-  
-  if (process.env.VITE_MAIN_GUILD_STAFF_ROLE_ID && userRoles.includes(process.env.VITE_MAIN_GUILD_STAFF_ROLE_ID)) {
-    return 'superviseur';
-  }
-  
-  if (process.env.VITE_DOT_GUILD_STAFF_ROLE_ID && userRoles.includes(process.env.VITE_DOT_GUILD_STAFF_ROLE_ID)) {
-    return 'superviseur';
-  }
-  
-  if (process.env.VITE_DOT_GUILD_DOT_ROLE_ID && userRoles.includes(process.env.VITE_DOT_GUILD_DOT_ROLE_ID)) {
-    return 'dot';
-  }
-  
-  if (process.env.VITE_MAIN_GUILD_PATRON_ROLE_ID && userRoles.includes(process.env.VITE_MAIN_GUILD_PATRON_ROLE_ID)) {
-    return 'patron';
-  }
-  
-  if (process.env.VITE_MAIN_GUILD_COPATRON_ROLE_ID && userRoles.includes(process.env.VITE_MAIN_GUILD_COPATRON_ROLE_ID)) {
-    return 'co_patron';
-  }
-  
-  // Propriétaire de guilde (priorité plus basse que les rôles spécifiques)
-  if (isOwner) {
-    if (guildId === process.env.VITE_DOT_GUILD_ID) {
-      return 'dot';
-    }
-    return 'patron';
-  }
-  
-  return 'employee';
-}
 
 // Middleware d'authentification
 function requireAuth(req, res, next) {
@@ -166,10 +128,9 @@ app.get('/auth/callback', async (req, res) => {
     const user = userResponse.data;
     const guilds = guildsResponse.data;
 
-    // Récupération des rôles utilisateur dans toutes les guildes
+    // Récupération des rôles utilisateur
     let userRole = 'employee';
     const guildIds = guilds.map(g => g.id);
-    let allUserRoles = [];
 
     for (const guildId of guildIds) {
       try {
@@ -181,27 +142,20 @@ app.get('/auth/callback', async (req, res) => {
         );
 
         const roles = memberResponse.data.roles;
-        allUserRoles = allUserRoles.concat(roles);
-        
-        // Déterminer le rôle pour cette guilde
-        const guild = guilds.find(g => g.id === guildId);
-        const roleForGuild = determineUserRole(roles, guild && guild.owner, guildId);
-        
-        // Garder le rôle le plus élevé
-        const rolePriority = { 'superadmin': 7, 'superviseur': 6, 'dot': 5, 'patron': 4, 'co_patron': 3, 'employee': 1 };
-        if (rolePriority[roleForGuild] > rolePriority[userRole]) {
-          userRole = roleForGuild;
+        for (const roleId of roles) {
+          if (ROLE_MAPPING[roleId]) {
+            const mappedRole = ROLE_MAPPING[roleId];
+            if (['superadmin', 'superviseur'].includes(mappedRole)) {
+              userRole = mappedRole;
+              break;
+            } else if (['dot', 'patron', 'co_patron'].includes(mappedRole) && userRole === 'employee') {
+              userRole = mappedRole;
+            }
+          }
         }
       } catch (error) {
         console.log(`Erreur lors de la récupération des rôles pour le serveur ${guildId}:`, error.message);
       }
-    }
-    
-    // Vérification finale avec tous les rôles combinés
-    const finalRole = determineUserRole(allUserRoles, false, null);
-    const rolePriority = { 'superadmin': 7, 'superviseur': 6, 'dot': 5, 'patron': 4, 'co_patron': 3, 'employee': 1 };
-    if (rolePriority[finalRole] > rolePriority[userRole]) {
-      userRole = finalRole;
     }
 
     // Sauvegarde de la session
