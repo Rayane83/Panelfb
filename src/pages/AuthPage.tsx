@@ -1,16 +1,14 @@
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { LogIn, Shield, Users, Sparkles, Zap, Globe, AlertTriangle } from 'lucide-react'
+import { LogIn, Shield, Users, Sparkles, Zap, Globe, CheckCircle } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 
 export function AuthPage() {
   const { login, isLoading } = useAuth()
-  
-  // Vérifier la configuration Discord
-  const isDiscordConfigured = true // Configuration hardcodée pour le déploiement
 
   const handleLogin = async () => {
+    console.log('🚀 Login button clicked')
     await login()
   }
 
@@ -22,28 +20,28 @@ export function AuthPage() {
     },
     {
       icon: Shield,
-      title: "Sécurité HWIP",
-      description: "Authentification par empreinte matérielle"
+      title: "Sécurité OAuth",
+      description: "Authentification Discord sécurisée"
     },
     {
       icon: Zap,
-      title: "API REST",
-      description: "Backend moderne avec OpenAPI/Swagger"
+      title: "Interface moderne",
+      description: "React 18 avec TypeScript et Tailwind"
     },
     {
       icon: Globe,
       title: "Multi-entreprises",
-      description: "Architecture hexagonale scalable"
+      description: "Architecture scalable et modulaire"
     }
   ]
 
   const roleHierarchy = [
     { name: 'Superadmin', level: 6, color: 'from-red-500 to-pink-500', description: 'Accès complet système' },
     { name: 'Staff', level: 5, color: 'from-purple-500 to-indigo-500', description: 'Administration générale' },
-    { name: 'DOT', level: 4, color: 'from-blue-500 to-cyan-500', description: 'Direction fiscale inter-entreprises' },
+    { name: 'DOT', level: 4, color: 'from-blue-500 to-cyan-500', description: 'Direction fiscale' },
     { name: 'Patron', level: 3, color: 'from-orange-500 to-red-500', description: 'Propriétaire entreprise' },
-    { name: 'Co-Patron', level: 2, color: 'from-yellow-500 to-orange-500', description: 'Co-direction entreprise' },
-    { name: 'Employé', level: 1, color: 'from-gray-400 to-gray-500', description: 'Accès personnel limité' }
+    { name: 'Co-Patron', level: 2, color: 'from-yellow-500 to-orange-500', description: 'Co-direction' },
+    { name: 'Employé', level: 1, color: 'from-gray-400 to-gray-500', description: 'Accès personnel' }
   ]
 
   return (
@@ -79,7 +77,7 @@ export function AuthPage() {
                   </span>
                 </h1>
                 <p className="text-xl text-slate-300 max-w-lg mx-auto lg:mx-0">
-                  Système complet de gestion d'entreprises avec architecture hexagonale et API REST
+                  Système complet de gestion d'entreprises avec authentification Discord OAuth
                 </p>
               </div>
             </div>
@@ -122,7 +120,7 @@ export function AuthPage() {
                 <Badge className="bg-green-500/20 text-green-300 border-green-500/30">Vite</Badge>
                 <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Tailwind CSS</Badge>
                 <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">Supabase</Badge>
-                <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30">Zod</Badge>
+                <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30">Discord OAuth</Badge>
               </div>
             </div>
           </div>
@@ -152,16 +150,16 @@ export function AuthPage() {
                   {/* Benefits */}
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3 text-sm text-slate-300">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <CheckCircle className="w-4 h-4 text-green-400" />
                       <span>Rôles Discord automatiquement mappés</span>
                     </div>
                     <div className="flex items-center space-x-3 text-sm text-slate-300">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>API REST avec validation Zod</span>
+                      <CheckCircle className="w-4 h-4 text-blue-400" />
+                      <span>Interface moderne et responsive</span>
                     </div>
                     <div className="flex items-center space-x-3 text-sm text-slate-300">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                      <span>Architecture hexagonale (Ports & Adapters)</span>
+                      <CheckCircle className="w-4 h-4 text-purple-400" />
+                      <span>Gestion multi-entreprises</span>
                     </div>
                   </div>
 
@@ -201,18 +199,6 @@ export function AuthPage() {
                       </div>
                     )}
                   </Button>
-                  
-                  {!isDiscordConfigured && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg backdrop-blur">
-                      <div className="flex items-center space-x-2">
-                        <AlertTriangle className="w-4 h-4 text-red-400" />
-                        <p className="text-sm text-red-400 font-medium">Configuration requise</p>
-                      </div>
-                      <p className="text-xs text-red-300 mt-1">
-                        Variables Discord OAuth manquantes dans l'environnement.
-                      </p>
-                    </div>
-                  )}
 
                   {/* Security notice */}
                   <div className="text-center space-y-2">
@@ -221,7 +207,7 @@ export function AuthPage() {
                       <span>Connexion sécurisée SSL/TLS</span>
                     </div>
                     <p className="text-xs text-slate-500">
-                      Authentification Discord OAuth sécurisée
+                      Authentification Discord OAuth 2.0 sécurisée
                     </p>
                   </div>
                 </CardContent>
@@ -233,7 +219,7 @@ export function AuthPage() {
                   Discord Enterprise Management System
                 </p>
                 <p className="text-slate-500 text-xs mt-1">
-                  Version 2.0 • Architecture Hexagonale • API REST
+                  Version 2.0 • React + TypeScript • Discord OAuth
                 </p>
               </div>
             </div>
