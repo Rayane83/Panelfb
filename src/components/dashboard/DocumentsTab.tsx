@@ -3,97 +3,60 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Badge } from '../ui/badge'
-import { Progress } from '../ui/progress'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
-import { useSupabase } from '../../hooks/useSupabase'
-import { Upload, FileText, Image, Archive, Eye, Download, Trash2, AlertTriangle, CheckCircle, Search, Filter, RefreshCw } from 'lucide-react'
+import { Upload, FileText, Image, Archive, Eye, Download, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
 
 interface Document {
   id: string
   name: string
-  type: 'facture' | 'diplome'
-  file_path: string
-  file_size: number
-  mime_type: string
+  type: string
+  size: string
+  uploadDate: Date
+  category: 'facture' | 'diplome'
   owner: string
-  upload_date: string
-  created_at: string
-  enterprise_id: string
-}
-
-interface UploadMetadata {
-  type: 'facture' | 'diplome'
-  date: string
-  owner: string
-  category: string
+  url?: string
+  preview?: string
 }
 
 export function DocumentsTab() {
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
-  const supabaseHooks = useSupabase()
-  
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<Document[]>([
+    { 
+      id: '1', 
+      name: 'Facture_Janvier_2024.pdf', 
+      type: 'PDF', 
+      size: '2.1 MB', 
+      uploadDate: new Date(), 
+      category: 'facture', 
+      owner: 'Jean Dupont'
+    },
+    { 
+      id: '2', 
+      name: 'Diplome_Comptabilite.pdf', 
+      type: 'PDF', 
+      size: '1.8 MB', 
+      uploadDate: new Date(Date.now() - 86400000), 
+      category: 'diplome', 
+      owner: 'Marie Martin'
+    }
+  ])
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
-  const [uploadMetadata, setUploadMetadata] = useState<UploadMetadata>({
-    type: 'facture',
+  const [uploadMetadata, setUploadMetadata] = useState({
+    type: 'facture' as 'facture' | 'diplome',
     date: new Date().toISOString().split('T')[0],
-    owner: user?.username || '',
-    category: 'general'
+    owner: user?.username || ''
   })
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'facture' | 'diplome'>('all')
   const [dragActive, setDragActive] = useState(false)
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', message: string} | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const canUpload = hasPermission('documents') && ['superviseur', 'patron', 'co_patron', 'dot'].includes(user?.role || '')
-  const canDelete = hasPermission('documents') && ['superviseur', 'patron', 'co_patron'].includes(user?.role || '')
+  const canUpload = hasPermission('documents') && ['staff', 'patron', 'co_patron', 'dot'].includes(user?.role || '')
+  const canDelete = hasPermission('documents') && ['staff', 'patron', 'co_patron'].includes(user?.role || '')
   const canView = hasPermission('documents')
-
-  useEffect(() => {
-    loadDocuments()
-  }, [])
-
-  useEffect(() => {
-    // Filtrer les documents
-    let filtered = documents
-
-    if (searchTerm) {
-      filtered = filtered.filter(doc => 
-        doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.owner.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (filterType !== 'all') {
-      filtered = filtered.filter(doc => doc.type === filterType)
-    }
-
-    setFilteredDocuments(filtered)
-  }, [documents, searchTerm, filterType])
-
-  const loadDocuments = async () => {
-    if (!user?.enterprises?.[0]?.id) return
-    
-    try {
-      setIsLoading(true)
-      const enterpriseId = user.enterprises[0].id
-      const documentsData = await supabaseHooks.getDocuments(enterpriseId)
-      setDocuments(documentsData)
-    } catch (error) {
-      console.error('Erreur lors du chargement:', error)
-      showToast('error', 'Erreur lors du chargement des documents')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
     setToast({ type, message })
@@ -149,6 +112,7 @@ export function DocumentsTab() {
   const handleFileSelection = (files: FileList) => {
     if (!canUpload) return
 
+    // Validation des fichiers
     const errors: string[] = []
     Array.from(files).forEach(file => {
       const error = validateFile(file)
@@ -164,47 +128,52 @@ export function DocumentsTab() {
     setPreviewMode(true)
   }
 
-  const confirmUpload = async () => {
-    if (!selectedFiles || !canUpload || !user?.enterprises?.[0]?.id) return
+  const confirmUpload = () => {
+    if (!selectedFiles || !canUpload) return
 
     try {
-      setIsLoading(true)
-      setUploadProgress(0)
-      const enterpriseId = user.enterprises[0].id
+      const enterpriseId = user?.enterprises?.[0]?.id || user?.currentGuild?.id
+      if (!enterpriseId) {
+        showToast('error', 'Aucune entreprise sélectionnée')
+        return
+      }
 
-      const uploadPromises = Array.from(selectedFiles).map(async (file, index) => {
-        const metadata = {
+      const newDocuments = Array.from(selectedFiles).map(file => ({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        type: file.type.includes('pdf') ? 'PDF' : 'Image',
+        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+        uploadDate: new Date(),
+        category: uploadMetadata.type,
+        owner: uploadMetadata.owner,
+        url: URL.createObjectURL(file)
+      }))
+
+      // Simuler l'upload vers Supabase
+      Promise.all(newDocuments.map(doc => 
+        supabaseHooks.uploadDocument(selectedFiles[0], {
           enterpriseId,
           type: uploadMetadata.type,
           owner: uploadMetadata.owner,
-          date: uploadMetadata.date,
-          category: uploadMetadata.category
-        }
-
-        // Simuler le progrès
-        setUploadProgress((index / selectedFiles.length) * 100)
-        
-        return await supabaseHooks.uploadDocument(file, metadata)
+          date: uploadMetadata.date
+        })
+      )).then(() => {
+        showToast('success', `${newDocuments.length} fichier(s) uploadé(s) avec succès`)
+      }).catch((error) => {
+        console.error('Erreur upload:', error)
+        showToast('error', 'Erreur lors de l\'upload')
       })
 
-      const uploadedDocs = await Promise.all(uploadPromises)
-      
-      setUploadProgress(100)
-      setDocuments(prev => [...uploadedDocs, ...prev])
+      setDocuments(prev => [...prev, ...newDocuments])
       setSelectedFiles(null)
       setPreviewMode(false)
       
+      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      
-      showToast('success', `${uploadedDocs.length} fichier(s) uploadé(s) avec succès`)
     } catch (error) {
-      console.error('Erreur upload:', error)
-      showToast('error', 'Erreur lors de l\'upload')
-    } finally {
-      setIsLoading(false)
-      setUploadProgress(0)
+      showToast('error', 'Erreur lors de l\'upload des fichiers')
     }
   }
 
@@ -216,60 +185,30 @@ export function DocumentsTab() {
     }
   }
 
-  const handleDelete = async (documentId: string) => {
+  const handleDelete = (documentId: string) => {
     if (!canDelete) return
 
     if (confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
-      try {
-        await supabaseHooks.deleteDocument(documentId)
-        setDocuments(prev => prev.filter(doc => doc.id !== documentId))
-        showToast('success', 'Document supprimé avec succès')
-      } catch (error) {
-        console.error('Erreur:', error)
-        showToast('error', 'Erreur lors de la suppression')
-      }
+      setDocuments(prev => prev.filter(doc => doc.id !== documentId))
+      showToast('success', 'Document supprimé avec succès')
     }
   }
 
-  const handleView = async (document: Document) => {
+  const handleView = (document: Document) => {
     if (!canView) return
     
-    try {
-      const url = await supabaseHooks.getDocumentUrl(document.file_path)
-      window.open(url, '_blank')
-    } catch (error) {
+    if (document.url) {
+      window.open(document.url, '_blank')
+    } else {
       showToast('warning', 'Aperçu non disponible pour ce document')
     }
   }
 
-  const handleDownload = async (document: Document) => {
+  const handleDownload = (document: Document) => {
     if (!canView) return
     
-    try {
-      const url = await supabaseHooks.getDocumentUrl(document.file_path)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = document.name
-      link.click()
-      showToast('success', `Téléchargement de ${document.name} démarré`)
-    } catch (error) {
-      showToast('error', 'Erreur lors du téléchargement')
-    }
-  }
-
-  const exportDocumentsList = () => {
-    const exportData = filteredDocuments.map(doc => ({
-      Nom: doc.name,
-      Type: doc.type,
-      Propriétaire: doc.owner,
-      'Date Upload': doc.upload_date,
-      'Taille (MB)': (doc.file_size / 1024 / 1024).toFixed(2),
-      'Type MIME': doc.mime_type
-    }))
-    
-    const filename = `documents_${user?.enterprises?.[0]?.name || 'export'}_${new Date().toISOString().split('T')[0]}.xlsx`
-    // Utiliser la fonction d'export
-    showToast('success', `Liste des documents exportée: ${filename}`)
+    // Simulation du téléchargement
+    showToast('success', `Téléchargement de ${document.name} démarré`)
   }
 
   const categories = [
@@ -277,25 +216,11 @@ export function DocumentsTab() {
     { value: 'diplome', label: 'Diplômes', color: 'bg-green-100 text-green-800' }
   ]
 
-  const documentCategories = [
-    { value: 'general', label: 'Général' },
-    { value: 'comptabilite', label: 'Comptabilité' },
-    { value: 'juridique', label: 'Juridique' },
-    { value: 'rh', label: 'Ressources Humaines' },
-    { value: 'formation', label: 'Formation' }
-  ]
-
   const typeIcons = {
-    'application/pdf': FileText,
-    'image/png': Image,
-    'image/jpeg': Image,
-    'image/jpg': Image,
-    'image/webp': Image
+    'PDF': FileText,
+    'Image': Image,
+    'Archive': Archive
   }
-
-  const totalSize = documents.reduce((sum, doc) => sum + doc.file_size, 0)
-  const facturesCount = documents.filter(d => d.type === 'facture').length
-  const diplomesCount = documents.filter(d => d.type === 'diplome').length
 
   return (
     <div className="space-y-6">
@@ -314,17 +239,11 @@ export function DocumentsTab() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Factures / Diplômes</h2>
-          <p className="text-muted-foreground">
-            Gestion des documents avec upload sécurisé et prévisualisation
-          </p>
-        </div>
-        <Button onClick={loadDocuments} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Factures / Diplômes</h2>
+        <p className="text-muted-foreground">
+          Gestion des documents avec upload sécurisé et prévisualisation
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -345,7 +264,9 @@ export function DocumentsTab() {
             <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{facturesCount}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {documents.filter(d => d.category === 'facture').length}
+            </div>
             <p className="text-xs text-muted-foreground">Documents factures</p>
           </CardContent>
         </Card>
@@ -356,7 +277,9 @@ export function DocumentsTab() {
             <Image className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{diplomesCount}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {documents.filter(d => d.category === 'diplome').length}
+            </div>
             <p className="text-xs text-muted-foreground">Documents diplômes</p>
           </CardContent>
         </Card>
@@ -367,48 +290,11 @@ export function DocumentsTab() {
             <Archive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(totalSize / 1024 / 1024).toFixed(1)} MB</div>
-            <p className="text-xs text-muted-foreground">Sur 1000 MB</p>
-            <Progress value={(totalSize / (1000 * 1024 * 1024)) * 100} className="mt-2" />
+            <div className="text-2xl font-bold">3.9 MB</div>
+            <p className="text-xs text-muted-foreground">Sur 100 MB</p>
           </CardContent>
         </Card>
       </div>
-
-      {/* Recherche et filtres */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recherche et Filtres</CardTitle>
-          <CardDescription>
-            Trouvez rapidement vos documents
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par nom ou propriétaire..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as 'all' | 'facture' | 'diplome')}
-              className="h-10 px-3 rounded-lg border border-input bg-background text-sm"
-            >
-              <option value="all">Tous les types</option>
-              <option value="facture">Factures uniquement</option>
-              <option value="diplome">Diplômes uniquement</option>
-            </select>
-            <Button onClick={exportDocumentsList} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export Liste
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {canUpload && (
         <Card>
@@ -451,7 +337,7 @@ export function DocumentsTab() {
                   </Label>
                 </div>
                 
-                <div className="grid gap-4 md:grid-cols-4 mt-4">
+                <div className="grid gap-4 md:grid-cols-3 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="type">Type de document *</Label>
                     <select
@@ -463,19 +349,6 @@ export function DocumentsTab() {
                     >
                       <option value="facture">Facture</option>
                       <option value="diplome">Diplôme</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Catégorie</Label>
-                    <select
-                      id="category"
-                      value={uploadMetadata.category}
-                      onChange={(e) => setUploadMetadata(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
-                    >
-                      {documentCategories.map(cat => (
-                        <option key={cat.value} value={cat.value}>{cat.label}</option>
-                      ))}
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -504,43 +377,33 @@ export function DocumentsTab() {
               <div className="space-y-4">
                 <h4 className="font-medium">Prévisualisation des fichiers sélectionnés:</h4>
                 <div className="space-y-2">
-                  {selectedFiles && Array.from(selectedFiles).map((file, index) => {
-                    const Icon = file.type.includes('image') ? Image : FileText
-                    return (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Icon className={`h-6 w-6 ${file.type.includes('image') ? 'text-green-600' : 'text-blue-600'}`} />
-                          <div>
-                            <p className="font-medium">{file.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB • {uploadMetadata.type} • {uploadMetadata.category}
-                            </p>
-                          </div>
+                  {selectedFiles && Array.from(selectedFiles).map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {file.type.includes('image') ? (
+                          <Image className="h-6 w-6 text-green-600" />
+                        ) : (
+                          <FileText className="h-6 w-6 text-blue-600" />
+                        )}
+                        <div>
+                          <p className="font-medium">{file.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB • {uploadMetadata.type}
+                          </p>
                         </div>
-                        <Badge className={categories.find(c => c.value === uploadMetadata.type)?.color}>
-                          {categories.find(c => c.value === uploadMetadata.type)?.label}
-                        </Badge>
                       </div>
-                    )
-                  })}
-                </div>
-                
-                {uploadProgress > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Upload en cours...</span>
-                      <span>{uploadProgress.toFixed(0)}%</span>
+                      <Badge className={categories.find(c => c.value === uploadMetadata.type)?.color}>
+                        {categories.find(c => c.value === uploadMetadata.type)?.label}
+                      </Badge>
                     </div>
-                    <Progress value={uploadProgress} />
-                  </div>
-                )}
-                
+                  ))}
+                </div>
                 <div className="flex space-x-2">
-                  <Button onClick={confirmUpload} className="flex-1" disabled={isLoading}>
+                  <Button onClick={confirmUpload} className="flex-1">
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Upload en cours...' : 'Confirmer l\'Upload'}
+                    Confirmer l'Upload
                   </Button>
-                  <Button onClick={cancelUpload} variant="outline" className="flex-1" disabled={isLoading}>
+                  <Button onClick={cancelUpload} variant="outline" className="flex-1">
                     Annuler
                   </Button>
                 </div>
@@ -552,18 +415,16 @@ export function DocumentsTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Documents Stockés ({filteredDocuments.length})</CardTitle>
+          <CardTitle>Documents Stockés</CardTitle>
           <CardDescription>
-            {searchTerm && `Résultats pour "${searchTerm}" • `}
-            {filterType !== 'all' && `Filtre: ${categories.find(c => c.value === filterType)?.label} • `}
             Liste de tous vos documents avec actions disponibles
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredDocuments.map((document) => {
-              const Icon = typeIcons[document.mime_type as keyof typeof typeIcons] || FileText
-              const category = categories.find(cat => cat.value === document.type)
+            {documents.map((document) => {
+              const Icon = typeIcons[document.type as keyof typeof typeIcons] || FileText
+              const category = categories.find(cat => cat.value === document.category)
               
               return (
                 <div key={document.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow">
@@ -575,11 +436,9 @@ export function DocumentsTab() {
                         <Badge className={category?.color}>
                           {category?.label}
                         </Badge>
+                        <span className="text-sm text-muted-foreground">{document.size}</span>
                         <span className="text-sm text-muted-foreground">
-                          {(document.file_size / 1024 / 1024).toFixed(1)} MB
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(document.upload_date).toLocaleDateString('fr-FR')}
+                          {document.uploadDate.toLocaleDateString('fr-FR')}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -625,99 +484,17 @@ export function DocumentsTab() {
             })}
           </div>
           
-          {filteredDocuments.length === 0 && (
+          {documents.length === 0 && (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">
-                {searchTerm || filterType !== 'all' ? 'Aucun document trouvé' : 'Aucun document'}
-              </p>
+              <p className="text-lg font-medium text-muted-foreground">Aucun document</p>
               <p className="text-sm text-muted-foreground">
-                {searchTerm || filterType !== 'all' 
-                  ? 'Essayez de modifier vos critères de recherche'
-                  : canUpload ? 'Uploadez vos premiers documents' : 'Aucun document disponible'
-                }
+                {canUpload ? 'Uploadez vos premiers documents' : 'Aucun document disponible'}
               </p>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Statistiques détaillées */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistiques par Type</CardTitle>
-            <CardDescription>
-              Répartition des documents par catégorie
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {categories.map((category) => {
-                const count = documents.filter(d => d.type === category.value).length
-                const size = documents.filter(d => d.type === category.value).reduce((sum, d) => sum + d.file_size, 0)
-                const percentage = documents.length > 0 ? (count / documents.length) * 100 : 0
-                
-                return (
-                  <div key={category.value} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Badge className={category.color}>{category.label}</Badge>
-                        <span className="text-sm">{count} fichier(s)</span>
-                      </div>
-                      <span className="text-sm font-medium">{(size / 1024 / 1024).toFixed(1)} MB</span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Actions Rapides</CardTitle>
-            <CardDescription>
-              Outils de gestion des documents
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button className="w-full" onClick={exportDocumentsList}>
-              <Download className="mr-2 h-4 w-4" />
-              Exporter la Liste Complète
-            </Button>
-            
-            {canUpload && (
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Rapide
-              </Button>
-            )}
-            
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-2">Formats supportés:</p>
-              <div className="flex flex-wrap gap-1">
-                {['PDF', 'PNG', 'JPG', 'JPEG', 'WEBP'].map(format => (
-                  <Badge key={format} variant="outline" className="text-xs">
-                    {format}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                💡 <strong>Astuce:</strong> Vous pouvez glisser-déposer plusieurs fichiers à la fois
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

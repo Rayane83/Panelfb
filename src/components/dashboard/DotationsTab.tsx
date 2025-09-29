@@ -3,12 +3,11 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Badge } from '../ui/badge'
-import { Textarea } from '../ui/textarea'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useSupabase } from '../../hooks/useSupabase'
-import { Plus, Download, FileText, Calculator, Upload, Save, Archive, AlertTriangle, Trash2, Edit, Eye, RefreshCw } from 'lucide-react'
+import { Plus, Download, FileText, Calculator, Upload, Save, Archive, AlertTriangle, Trash2 } from 'lucide-react'
 import { formatCurrency } from '../../lib/utils'
 import { parseDotationData, parseExpenseData, exportToExcel } from '../../utils/csvParser'
 
@@ -29,7 +28,6 @@ interface Expense {
   date: string
   justificatif: string
   montant: number
-  category: string
 }
 
 interface Withdrawal {
@@ -37,16 +35,6 @@ interface Withdrawal {
   date: string
   justificatif: string
   montant: number
-}
-
-interface Dotation {
-  id: string
-  period: string
-  status: string
-  created_at: string
-  total_ca: number
-  total_salaries: number
-  total_bonuses: number
 }
 
 export function DotationsTab() {
@@ -57,8 +45,6 @@ export function DotationsTab() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
-  const [dotations, setDotations] = useState<Dotation[]>([])
-  const [selectedDotation, setSelectedDotation] = useState<string>('')
   const [pasteData, setPasteData] = useState('')
   const [expensePasteData, setExpensePasteData] = useState('')
   const [withdrawalPasteData, setWithdrawalPasteData] = useState('')
@@ -66,11 +52,9 @@ export function DotationsTab() {
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', message: string} | null>(null)
   const [currentDotationId, setCurrentDotationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [editingCell, setEditingCell] = useState<{row: number, col: string} | null>(null)
   
   const canEdit = hasPermission('dotations') && (user?.role === 'patron' || user?.role === 'co_patron')
   const canExport = hasPermission('dotations')
-  const canView = hasPermission('dotations')
   const isReadOnly = user?.role === 'superviseur' || user?.role === 'dot' || user?.role === 'employee'
 
   useEffect(() => {
@@ -78,19 +62,47 @@ export function DotationsTab() {
   }, [])
 
   const loadDotations = async () => {
-    if (!user?.enterprises?.[0]?.id) return
+    if (!user?.currentGuild?.id) return
     
     try {
       setIsLoading(true)
-      const enterpriseId = user.enterprises[0].id
-      const dotationsData = await supabaseHooks.getDotations(enterpriseId)
-      setDotations(dotationsData)
+      const dotations = await supabaseHooks.getDotations(user.currentGuild.id)
       
-      if (dotationsData.length > 0) {
-        const latest = dotationsData[0]
+      if (dotations.length > 0) {
+        const latest = dotations[0]
         setCurrentDotationId(latest.id)
-        setSelectedDotation(latest.id)
-        await loadDotationData(latest.id)
+        
+        // Charger les lignes d'employés
+        const employeeLines = latest.dotation_lines.map((line: any) => ({
+          id: line.id,
+          nom: line.employee_name,
+          grade: line.grade || 'Junior',
+          run: line.run_amount,
+          facture: line.facture_amount,
+          vente: line.vente_amount,
+          caTotal: line.ca_total,
+          salaire: line.salary,
+          prime: line.bonus
+        }))
+        setEmployees(employeeLines)
+        
+        // Charger les dépenses
+        const expenseLines = latest.expenses.map((exp: any) => ({
+          id: exp.id,
+          date: exp.date,
+          justificatif: exp.description,
+          montant: exp.amount
+        }))
+        setExpenses(expenseLines)
+        
+        // Charger les retraits
+        const withdrawalLines = latest.withdrawals.map((wit: any) => ({
+          id: wit.id,
+          date: wit.date,
+          justificatif: wit.description,
+          montant: wit.amount
+        }))
+        setWithdrawals(withdrawalLines)
       }
     } catch (error) {
       console.error('Erreur lors du chargement:', error)
@@ -100,80 +112,9 @@ export function DotationsTab() {
     }
   }
 
-  const loadDotationData = async (dotationId: string) => {
-    try {
-      const dotation = dotations.find(d => d.id === dotationId)
-      if (!dotation) return
-
-      // Charger les données de la dotation sélectionnée
-      const [employeeLines, expenseLines, withdrawalLines] = await Promise.all([
-        supabaseHooks.getDotationLines(dotationId),
-        supabaseHooks.getDotationExpenses(dotationId),
-        supabaseHooks.getDotationWithdrawals(dotationId)
-      ])
-
-      setEmployees(employeeLines.map((line: any) => ({
-        id: line.id,
-        nom: line.employee_name,
-        grade: line.grade || 'Junior',
-        run: line.run_amount,
-        facture: line.facture_amount,
-        vente: line.vente_amount,
-        caTotal: line.ca_total,
-        salaire: line.salary,
-        prime: line.bonus
-      })))
-
-      setExpenses(expenseLines.map((exp: any) => ({
-        id: exp.id,
-        date: exp.date,
-        justificatif: exp.description,
-        montant: exp.amount,
-        category: exp.category || 'general'
-      })))
-
-      setWithdrawals(withdrawalLines.map((wit: any) => ({
-        id: wit.id,
-        date: wit.date,
-        justificatif: wit.description,
-        montant: wit.amount
-      })))
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error)
-      showToast('error', 'Erreur lors du chargement des données de la dotation')
-    }
-  }
-
   const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 3000)
-  }
-
-  const createNewDotation = async () => {
-    if (!canEdit || !user?.enterprises?.[0]?.id) return
-
-    try {
-      setIsLoading(true)
-      const enterpriseId = user.enterprises[0].id
-      const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
-      
-      const newDotation = await supabaseHooks.createDotation(enterpriseId, period)
-      setDotations(prev => [newDotation, ...prev])
-      setCurrentDotationId(newDotation.id)
-      setSelectedDotation(newDotation.id)
-      
-      // Réinitialiser les données
-      setEmployees([])
-      setExpenses([])
-      setWithdrawals([])
-      
-      showToast('success', 'Nouvelle dotation créée')
-    } catch (error) {
-      console.error('Erreur:', error)
-      showToast('error', 'Erreur lors de la création de la dotation')
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const handlePasteData = () => {
@@ -188,12 +129,14 @@ export function DotationsTab() {
         const existingIndex = newEmployees.findIndex(emp => emp.nom === newEmp.nom)
         
         if (existingIndex >= 0) {
+          // Mettre à jour l'employé existant
           newEmployees[existingIndex] = {
             ...newEmployees[existingIndex],
             ...newEmp,
             id: newEmployees[existingIndex].id
           }
         } else {
+          // Ajouter un nouvel employé
           newEmployees.push({
             ...newEmp,
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
@@ -227,7 +170,7 @@ export function DotationsTab() {
     if (!canEdit || !withdrawalPasteData.trim()) return
 
     try {
-      const parsedData = parseExpenseData(withdrawalPasteData)
+      const parsedData = parseExpenseData(withdrawalPasteData) // Même format
       setWithdrawals(prev => [...prev, ...parsedData])
       setWithdrawalPasteData('')
       showToast('success', `${parsedData.length} retrait(s) importé(s)`)
@@ -271,28 +214,40 @@ export function DotationsTab() {
     setEmployees(newEmployees)
   }
 
-  const handleExpenseEdit = (index: number, field: string, value: string) => {
+  const handleKeyDown = (e: React.KeyboardEvent, rowIndex: number, field: string) => {
     if (!canEdit) return
 
-    const newExpenses = [...expenses]
-    if (field === 'montant') {
-      newExpenses[index][field] = parseFloat(value) || 0
-    } else {
-      (newExpenses[index] as any)[field] = value
-    }
-    setExpenses(newExpenses)
-  }
+    const fields = ['nom', 'grade', 'run', 'facture', 'vente']
+    const currentFieldIndex = fields.indexOf(field)
 
-  const handleWithdrawalEdit = (index: number, field: string, value: string) => {
-    if (!canEdit) return
-
-    const newWithdrawals = [...withdrawals]
-    if (field === 'montant') {
-      newWithdrawals[index][field] = parseFloat(value) || 0
-    } else {
-      (newWithdrawals[index] as any)[field] = value
+    switch (e.key) {
+      case 'ArrowRight':
+        if (currentFieldIndex < fields.length - 1) {
+          setSelectedCell({ row: rowIndex, col: fields[currentFieldIndex + 1] })
+        }
+        break
+      case 'ArrowLeft':
+        if (currentFieldIndex > 0) {
+          setSelectedCell({ row: rowIndex, col: fields[currentFieldIndex - 1] })
+        }
+        break
+      case 'ArrowDown':
+        if (rowIndex < employees.length - 1) {
+          setSelectedCell({ row: rowIndex + 1, col: field })
+        }
+        break
+      case 'ArrowUp':
+        if (rowIndex > 0) {
+          setSelectedCell({ row: rowIndex - 1, col: field })
+        }
+        break
+      case 'Home':
+        setSelectedCell({ row: rowIndex, col: fields[0] })
+        break
+      case 'End':
+        setSelectedCell({ row: rowIndex, col: fields[fields.length - 1] })
+        break
     }
-    setWithdrawals(newWithdrawals)
   }
 
   const addEmployee = () => {
@@ -324,8 +279,7 @@ export function DotationsTab() {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9), 
       date: new Date().toISOString().split('T')[0], 
       justificatif: '', 
-      montant: 0,
-      category: 'general'
+      montant: 0 
     }])
   }
 
@@ -350,22 +304,34 @@ export function DotationsTab() {
   }
 
   const handleSave = async () => {
-    if (!canEdit || !currentDotationId) return
+    if (!canEdit || !user?.currentGuild?.id) return
     
     try {
       setIsLoading(true)
       
+      let dotationId = currentDotationId
+      
+      if (!dotationId) {
+        // Créer une nouvelle dotation
+        const enterpriseId = user.enterprises?.[0]?.id || user.currentGuild.id
+        const dotation = await supabaseHooks.createDotation(
+          enterpriseId,
+          `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+        )
+        dotationId = dotation.id
+        setCurrentDotationId(dotationId)
+      }
+      
       // Sauvegarder les lignes d'employés
-      await supabaseHooks.saveDotationLines(currentDotationId, employees)
+      await supabaseHooks.saveDotationLines(dotationId, employees)
       
       // Sauvegarder les dépenses
-      await supabaseHooks.saveExpenses(currentDotationId, expenses)
+      await supabaseHooks.saveExpenses(dotationId, expenses)
       
       // Sauvegarder les retraits
-      await supabaseHooks.saveWithdrawals(currentDotationId, withdrawals)
+      await supabaseHooks.saveWithdrawals(dotationId, withdrawals)
       
-      showToast('success', 'Dotation sauvegardée avec succès')
-      await loadDotations() // Recharger les données
+      showToast('success', 'Rapport enregistré avec succès')
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error)
       showToast('error', 'Erreur lors de la sauvegarde')
@@ -375,12 +341,12 @@ export function DotationsTab() {
   }
 
   const handleArchive = async () => {
-    if (!canEdit || !user?.enterprises?.[0]?.id) return
+    if (!canEdit || !user?.currentGuild?.id) return
     
     try {
       setIsLoading(true)
       
-      const enterpriseId = user.enterprises[0].id
+      const enterpriseId = user.enterprises?.[0]?.id || user.currentGuild.id
       const reportData = {
         type: 'dotation',
         description: `Rapport dotation ${new Date().toLocaleDateString('fr-FR')}`,
@@ -420,15 +386,9 @@ export function DotationsTab() {
       Prime: emp.prime
     }))
     
-    const filename = `dotations_${user?.enterprises?.[0]?.name || 'export'}_${new Date().toISOString().split('T')[0]}.xlsx`
+    const filename = `dotations_${user?.currentGuild?.name || 'export'}_${new Date().toISOString().split('T')[0]}.xlsx`
     exportToExcel(exportData, filename)
     showToast('success', 'Export généré avec succès')
-  }
-
-  const handleDotationChange = async (dotationId: string) => {
-    setSelectedDotation(dotationId)
-    setCurrentDotationId(dotationId)
-    await loadDotationData(dotationId)
   }
 
   const totalCA = employees.reduce((sum, emp) => sum + emp.caTotal, 0)
@@ -463,60 +423,12 @@ export function DotationsTab() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestion des Dotations</h2>
-          <p className="text-muted-foreground">
-            Saisie et calcul automatique des dotations avec import Excel/CSV
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          {canEdit && (
-            <Button onClick={createNewDotation} disabled={isLoading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvelle Dotation
-            </Button>
-          )}
-          <Button onClick={loadDotations} variant="outline" disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-        </div>
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Gestion des Dotations</h2>
+        <p className="text-muted-foreground">
+          Saisie et calcul automatique des dotations avec import Excel/CSV
+        </p>
       </div>
-
-      {/* Sélecteur de dotation */}
-      {dotations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Sélection de Dotation</CardTitle>
-            <CardDescription>
-              Choisissez la dotation à afficher ou modifier
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-3">
-              {dotations.map((dotation) => (
-                <Button
-                  key={dotation.id}
-                  variant={selectedDotation === dotation.id ? "default" : "outline"}
-                  className="justify-start h-auto p-4"
-                  onClick={() => handleDotationChange(dotation.id)}
-                >
-                  <div className="text-left">
-                    <p className="font-medium">Période {dotation.period}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(dotation.total_ca)} • {dotation.status}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(dotation.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
@@ -584,8 +496,8 @@ export function DotationsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Textarea
-              className="min-h-32 font-mono text-sm"
+            <textarea
+              className="w-full h-32 p-3 border rounded-lg resize-none font-mono text-sm"
               placeholder="Jean Dupont;15000;8000;5000&#10;Marie Martin;20000;12000;8000"
               value={pasteData}
               onChange={(e) => setPasteData(e.target.value)}
@@ -603,12 +515,12 @@ export function DotationsTab() {
         <CardHeader>
           <CardTitle>Table des Employés</CardTitle>
           <CardDescription>
-            Grille éditable avec calculs automatiques
+            Grille éditable avec navigation clavier (flèches, Home/End, Tab)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse" role="grid" aria-label="Tableau des employés">
               <thead>
                 <tr className="border-b">
                   <th className="text-left p-2 font-medium">Nom</th>
@@ -629,17 +541,25 @@ export function DotationsTab() {
                       <Input
                         value={employee.nom}
                         onChange={(e) => handleCellEdit(rowIndex, 'nom', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 'nom')}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: 'nom' })}
                         disabled={!canEdit}
-                        className="h-8"
-                        placeholder="Nom de l'employé"
+                        className={selectedCell?.row === rowIndex && selectedCell?.col === 'nom' ? 'ring-2 ring-primary' : ''}
+                        aria-label={`Nom employé ligne ${rowIndex + 1}`}
+                        required
                       />
                     </td>
                     <td className="p-2">
                       <select
                         value={employee.grade}
                         onChange={(e) => handleCellEdit(rowIndex, 'grade', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 'grade')}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: 'grade' })}
                         disabled={!canEdit}
-                        className="w-full h-8 px-2 rounded border border-input bg-background text-sm"
+                        className={`w-full h-10 px-3 rounded-lg border border-input bg-background text-sm ${
+                          selectedCell?.row === rowIndex && selectedCell?.col === 'grade' ? 'ring-2 ring-primary' : ''
+                        }`}
+                        aria-label={`Grade employé ligne ${rowIndex + 1}`}
                       >
                         <option value="Junior">Junior</option>
                         <option value="Senior">Senior</option>
@@ -654,8 +574,11 @@ export function DotationsTab() {
                         step="0.01"
                         value={employee.run}
                         onChange={(e) => handleCellEdit(rowIndex, 'run', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 'run')}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: 'run' })}
                         disabled={!canEdit}
-                        className="h-8"
+                        className={selectedCell?.row === rowIndex && selectedCell?.col === 'run' ? 'ring-2 ring-primary' : ''}
+                        aria-label={`RUN employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     <td className="p-2">
@@ -665,8 +588,11 @@ export function DotationsTab() {
                         step="0.01"
                         value={employee.facture}
                         onChange={(e) => handleCellEdit(rowIndex, 'facture', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 'facture')}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: 'facture' })}
                         disabled={!canEdit}
-                        className="h-8"
+                        className={selectedCell?.row === rowIndex && selectedCell?.col === 'facture' ? 'ring-2 ring-primary' : ''}
+                        aria-label={`Facture employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     <td className="p-2">
@@ -676,29 +602,35 @@ export function DotationsTab() {
                         step="0.01"
                         value={employee.vente}
                         onChange={(e) => handleCellEdit(rowIndex, 'vente', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 'vente')}
+                        onFocus={() => setSelectedCell({ row: rowIndex, col: 'vente' })}
                         disabled={!canEdit}
-                        className="h-8"
+                        className={selectedCell?.row === rowIndex && selectedCell?.col === 'vente' ? 'ring-2 ring-primary' : ''}
+                        aria-label={`Vente employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         value={formatCurrency(employee.caTotal)}
                         disabled
-                        className="bg-muted h-8"
+                        className="bg-muted"
+                        aria-label={`CA Total employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         value={formatCurrency(employee.salaire)}
                         disabled
-                        className="bg-muted h-8"
+                        className="bg-muted"
+                        aria-label={`Salaire employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         value={formatCurrency(employee.prime)}
                         disabled
-                        className="bg-muted h-8"
+                        className="bg-muted"
+                        aria-label={`Prime employé ligne ${rowIndex + 1}`}
                       />
                     </td>
                     {canEdit && (
@@ -759,8 +691,8 @@ export function DotationsTab() {
             {canEdit && (
               <div className="mb-4 space-y-2">
                 <Label>Import dépenses (Date;Justificatif;Montant)</Label>
-                <Textarea
-                  className="h-20 font-mono text-sm"
+                <textarea
+                  className="w-full h-20 p-2 border rounded text-sm font-mono"
                   placeholder="01/01/2024;Frais de bureau;1200&#10;02/01/2024;Essence;85.50"
                   value={expensePasteData}
                   onChange={(e) => setExpensePasteData(e.target.value)}
@@ -774,20 +706,30 @@ export function DotationsTab() {
             
             <div className="space-y-4">
               {expenses.map((expense, index) => (
-                <div key={expense.id} className="grid grid-cols-5 gap-2 items-center">
+                <div key={expense.id} className="grid grid-cols-4 gap-2 items-center">
                   <Input
                     type="date"
                     value={expense.date}
-                    onChange={(e) => handleExpenseEdit(index, 'date', e.target.value)}
+                    onChange={(e) => {
+                      const newExpenses = [...expenses]
+                      newExpenses[index].date = e.target.value
+                      setExpenses(newExpenses)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Date dépense ${index + 1}`}
+                    required
                   />
                   <Input
                     placeholder="Justificatif"
                     value={expense.justificatif}
-                    onChange={(e) => handleExpenseEdit(index, 'justificatif', e.target.value)}
+                    onChange={(e) => {
+                      const newExpenses = [...expenses]
+                      newExpenses[index].justificatif = e.target.value
+                      setExpenses(newExpenses)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Justificatif dépense ${index + 1}`}
+                    required
                   />
                   <Input
                     type="number"
@@ -795,22 +737,15 @@ export function DotationsTab() {
                     step="0.01"
                     placeholder="Montant"
                     value={expense.montant}
-                    onChange={(e) => handleExpenseEdit(index, 'montant', e.target.value)}
+                    onChange={(e) => {
+                      const newExpenses = [...expenses]
+                      newExpenses[index].montant = parseFloat(e.target.value) || 0
+                      setExpenses(newExpenses)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Montant dépense ${index + 1}`}
+                    required
                   />
-                  <select
-                    value={expense.category}
-                    onChange={(e) => handleExpenseEdit(index, 'category', e.target.value)}
-                    disabled={!canEdit}
-                    className="h-8 px-2 rounded border border-input bg-background text-sm"
-                  >
-                    <option value="general">Général</option>
-                    <option value="bureau">Bureau</option>
-                    <option value="transport">Transport</option>
-                    <option value="materiel">Matériel</option>
-                    <option value="formation">Formation</option>
-                  </select>
                   {canEdit && (
                     <Button
                       variant="outline"
@@ -844,8 +779,8 @@ export function DotationsTab() {
             {canEdit && (
               <div className="mb-4 space-y-2">
                 <Label>Import retraits (Date;Justificatif;Montant)</Label>
-                <Textarea
-                  className="h-20 font-mono text-sm"
+                <textarea
+                  className="w-full h-20 p-2 border rounded text-sm font-mono"
                   placeholder="01/01/2024;Retrait patron;5000&#10;15/01/2024;Dividendes;2500"
                   value={withdrawalPasteData}
                   onChange={(e) => setWithdrawalPasteData(e.target.value)}
@@ -863,16 +798,26 @@ export function DotationsTab() {
                   <Input
                     type="date"
                     value={withdrawal.date}
-                    onChange={(e) => handleWithdrawalEdit(index, 'date', e.target.value)}
+                    onChange={(e) => {
+                      const newWithdrawals = [...withdrawals]
+                      newWithdrawals[index].date = e.target.value
+                      setWithdrawals(newWithdrawals)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Date retrait ${index + 1}`}
+                    required
                   />
                   <Input
                     placeholder="Justificatif"
                     value={withdrawal.justificatif}
-                    onChange={(e) => handleWithdrawalEdit(index, 'justificatif', e.target.value)}
+                    onChange={(e) => {
+                      const newWithdrawals = [...withdrawals]
+                      newWithdrawals[index].justificatif = e.target.value
+                      setWithdrawals(newWithdrawals)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Justificatif retrait ${index + 1}`}
+                    required
                   />
                   <Input
                     type="number"
@@ -880,9 +825,14 @@ export function DotationsTab() {
                     step="0.01"
                     placeholder="Montant"
                     value={withdrawal.montant}
-                    onChange={(e) => handleWithdrawalEdit(index, 'montant', e.target.value)}
+                    onChange={(e) => {
+                      const newWithdrawals = [...withdrawals]
+                      newWithdrawals[index].montant = parseFloat(e.target.value) || 0
+                      setWithdrawals(newWithdrawals)
+                    }}
                     disabled={!canEdit}
-                    className="h-8"
+                    aria-label={`Montant retrait ${index + 1}`}
+                    required
                   />
                   {canEdit && (
                     <Button
@@ -906,50 +856,6 @@ export function DotationsTab() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Résumé financier */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Résumé Financier</CardTitle>
-          <CardDescription>
-            Calculs automatiques et bilan de la dotation
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="font-medium text-green-800">CA Total</span>
-                <span className="font-bold text-green-600">{formatCurrency(totalCA)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                <span className="font-medium text-blue-800">Total Salaires</span>
-                <span className="font-bold text-blue-600">{formatCurrency(totalSalaires)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                <span className="font-medium text-purple-800">Total Primes</span>
-                <span className="font-bold text-purple-600">{formatCurrency(totalPrimes)}</span>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                <span className="font-medium text-red-800">Dépenses</span>
-                <span className="font-bold text-red-600">{formatCurrency(totalExpenses)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                <span className="font-medium text-orange-800">Retraits</span>
-                <span className="font-bold text-orange-600">{formatCurrency(totalWithdrawals)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <span className="font-bold text-gray-800">Bénéfice Net</span>
-                <span className="font-bold text-gray-600">
-                  {formatCurrency(totalCA - totalSalaires - totalPrimes - totalExpenses - totalWithdrawals)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
-import { useTheme } from '../../hooks/useTheme.tsx'
+import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../ui/button'
 import { getCurrentWeek } from '../../lib/utils'
 import { Badge } from '../ui/badge'
