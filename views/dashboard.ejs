@@ -1,231 +1,121 @@
-<%- include('base', { title: title, user: user, body: `
-<div class="py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- En-tête -->
-        <div class="md:flex md:items-center md:justify-between">
-            <div class="flex-1 min-w-0">
-                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                    Tableau de bord
-                </h2>
-                <p class="mt-1 text-sm text-gray-500">
-                    Bienvenue, ${user.username} - Rôle: ${user.role}
-                </p>
-            </div>
-        </div>
-
-        <!-- Statistiques -->
-        <div class="mt-8">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <!-- Total Entreprises -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <i data-lucide="building-2" class="h-6 w-6 text-gray-400"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        Entreprises
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900">
-                                        ${stats.total_enterprises}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - FlashbackFA Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                        <i data-lucide="server" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">FlashbackFA Enterprise</h1>
+                        <p class="text-xs text-gray-500">Management System</p>
                     </div>
                 </div>
-
-                <!-- Total Employés -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <i data-lucide="users" class="h-6 w-6 text-gray-400"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        Employés
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900">
-                                        ${stats.total_employees}
-                                    </dd>
-                                </dl>
-                            </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=128" 
+                             alt="<%= user.username %>" 
+                             class="w-8 h-8 rounded-full"
+                             onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div>
+                            <p class="text-sm font-medium"><%= user.username %></p>
+                            <p class="text-xs text-gray-500"><%= user.role %></p>
                         </div>
                     </div>
-                </div>
-
-                <!-- CA Mensuel -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <i data-lucide="dollar-sign" class="h-6 w-6 text-gray-400"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">
-                                        CA Mensuel
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900">
-                                        ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(stats.monthly_ca)}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
+                    <a href="/logout" class="text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50">
+                        <i data-lucide="log-out" class="h-5 w-5"></i>
+                    </a>
                 </div>
             </div>
         </div>
+    </header>
 
-        <!-- Liste des entreprises -->
-        <div class="mt-8">
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">
-                        Vos Entreprises
-                    </h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                        Liste des entreprises auxquelles vous avez accès
-                    </p>
-                </div>
-                <ul class="divide-y divide-gray-200">
-                    ${enterprises && enterprises.length > 0 ? 
-                        enterprises.map(enterprise => `
-                        <li>
-                            <div class="px-4 py-4 flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10">
-                                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                            <i data-lucide="building-2" class="h-5 w-5 text-indigo-600"></i>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            ${enterprise.name}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            ${enterprise.type || 'SARL'} - Créée le ${new Date(enterprise.created_at).toLocaleDateString('fr-FR')}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Actif
-                                    </span>
-                                    <button class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
-                                        Voir détails
-                                    </button>
-                                </div>
-                            </div>
-                        </li>
-                        `).join('') :
-                        `<li>
-                            <div class="px-4 py-8 text-center">
-                                <i data-lucide="building-2" class="mx-auto h-12 w-12 text-gray-400"></i>
-                                <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune entreprise</h3>
-                                <p class="mt-1 text-sm text-gray-500">
-                                    Vous n'avez accès à aucune entreprise pour le moment.
-                                </p>
-                            </div>
-                        </li>`
-                    }
-                </ul>
-            </div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Welcome Section -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-8">
+            <h2 class="text-3xl font-bold mb-2">Bienvenue, <%= user.username %> !</h2>
+            <p class="text-blue-100">Tableau de bord FlashbackFA Enterprise</p>
         </div>
 
-        <!-- Actions rapides -->
-        <div class="mt-8">
-            <div class="bg-white shadow sm:rounded-lg">
-                <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">
-                        Actions rapides
-                    </h3>
-                    <div class="mt-5">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            ${['superadmin', 'superviseur', 'dot', 'patron', 'co_patron'].includes(user.role) ? `
-                            <a href="/dotations" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
-                                <div>
-                                    <span class="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-700 ring-4 ring-white">
-                                        <i data-lucide="calculator" class="h-6 w-6"></i>
-                                    </span>
-                                </div>
-                                <div class="mt-4">
-                                    <h3 class="text-lg font-medium">
-                                        <span class="absolute inset-0"></span>
-                                        Dotations
-                                    </h3>
-                                    <p class="mt-2 text-sm text-gray-500">
-                                        Gérer les dotations et calculs de salaires
-                                    </p>
-                                </div>
-                            </a>
-                            ` : ''}
+        <!-- Stats -->
+        <div class="grid gap-6 md:grid-cols-3 mb-8">
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-blue-100">
+                        <i data-lucide="building" class="h-6 w-6 text-blue-600"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold"><%= stats.total_enterprises %></div>
+                        <p class="text-sm text-gray-500">Entreprises</p>
+                    </div>
+                </div>
+            </div>
 
-                            ${['superadmin', 'superviseur', 'dot'].includes(user.role) ? `
-                            <a href="/impots" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
-                                <div>
-                                    <span class="rounded-lg inline-flex p-3 bg-green-50 text-green-700 ring-4 ring-white">
-                                        <i data-lucide="receipt" class="h-6 w-6"></i>
-                                    </span>
-                                </div>
-                                <div class="mt-4">
-                                    <h3 class="text-lg font-medium">
-                                        <span class="absolute inset-0"></span>
-                                        Calculs Fiscaux
-                                    </h3>
-                                    <p class="mt-2 text-sm text-gray-500">
-                                        Simulations et calculs d'impôts
-                                    </p>
-                                </div>
-                            </a>
-                            ` : ''}
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-green-100">
+                        <i data-lucide="users" class="h-6 w-6 text-green-600"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold"><%= stats.total_employees %></div>
+                        <p class="text-sm text-gray-500">Employés</p>
+                    </div>
+                </div>
+            </div>
 
-                            ${['superadmin', 'superviseur'].includes(user.role) ? `
-                            <a href="/staff" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
-                                <div>
-                                    <span class="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-700 ring-4 ring-white">
-                                        <i data-lucide="users" class="h-6 w-6"></i>
-                                    </span>
-                                </div>
-                                <div class="mt-4">
-                                    <h3 class="text-lg font-medium">
-                                        <span class="absolute inset-0"></span>
-                                        Gestion Staff
-                                    </h3>
-                                    <p class="mt-2 text-sm text-gray-500">
-                                        Gérer les employés et grades
-                                    </p>
-                                </div>
-                            </a>
-                            ` : ''}
-
-                            ${user.role === 'superadmin' ? `
-                            <a href="/superadmin" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
-                                <div>
-                                    <span class="rounded-lg inline-flex p-3 bg-red-50 text-red-700 ring-4 ring-white">
-                                        <i data-lucide="settings" class="h-6 w-6"></i>
-                                    </span>
-                                </div>
-                                <div class="mt-4">
-                                    <h3 class="text-lg font-medium">
-                                        <span class="absolute inset-0"></span>
-                                        Administration
-                                    </h3>
-                                    <p class="mt-2 text-sm text-gray-500">
-                                        Configuration système
-                                    </p>
-                                </div>
-                            </a>
-                            ` : ''}
-                        </div>
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-purple-100">
+                        <i data-lucide="trending-up" class="h-6 w-6 text-purple-600"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold">€<%= stats.monthly_ca %></div>
+                        <p class="text-sm text-gray-500">CA Mensuel</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-` }) %>
+
+        <!-- Enterprises -->
+        <div class="bg-white rounded-xl shadow-sm">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-semibold">Vos Entreprises</h3>
+            </div>
+            <div class="p-6">
+                <% if (enterprises && enterprises.length > 0) { %>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <% enterprises.forEach(function(enterprise) { %>
+                        <div class="p-4 border rounded-lg">
+                            <h4 class="font-medium"><%= enterprise.name %></h4>
+                            <p class="text-sm text-gray-600"><%= enterprise.type %></p>
+                            <p class="text-xs text-gray-500">Guild: <%= enterprise.guild_id %></p>
+                        </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-8">
+                        <i data-lucide="building" class="h-12 w-12 text-gray-400 mx-auto mb-4"></i>
+                        <p class="text-gray-600">Aucune entreprise trouvée</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

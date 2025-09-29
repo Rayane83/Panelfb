@@ -418,45 +418,43 @@ app.use((req, res) => {
   });
 });
 
-// Gestion des conflits de port
-function startServer(port) {
-  const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${port}`);
-    console.log(`📍 URL: http://localhost:${port}`);
-    console.log(`🔗 Supabase URL: ${process.env.VITE_SUPABASE_URL}`);
-    console.log(`🎮 Discord Client ID: ${DISCORD_CLIENT_ID}`);
-    console.log(`📁 Views directory: ${path.join(__dirname, 'views')}`);
+// Démarrage du serveur
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Serveur FlashbackFA Enterprise démarré sur le port ${PORT}`);
+  console.log(`📍 URL: http://localhost:${PORT}`);
+  console.log(`🔗 Supabase URL: ${process.env.VITE_SUPABASE_URL}`);
+  console.log(`🎮 Discord Client ID: ${DISCORD_CLIENT_ID}`);
+  console.log(`📁 Views directory: ${path.join(__dirname, 'views')}`);
+});
+
+// Gestion des erreurs de serveur
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Erreur: Le port ${PORT} est déjà utilisé par un autre processus.`);
+    console.error(`💡 Solutions possibles:`);
+    console.error(`   1. Arrêter le processus utilisant le port ${PORT}`);
+    console.error(`   2. Utiliser un autre port: PORT=3001 node server.js`);
+    console.error(`   3. Identifier le processus: lsof -i :${PORT} (Linux/Mac) ou netstat -ano | findstr :${PORT} (Windows)`);
+    process.exit(1);
+  } else {
+    console.error('❌ Erreur serveur:', err);
+    process.exit(1);
+  }
+});
+
+// Gestion propre de l'arrêt
+process.on('SIGTERM', () => {
+  console.log('SIGTERM reçu, arrêt du serveur...');
+  server.close(() => {
+    console.log('Serveur arrêté proprement');
+    process.exit(0);
   });
+});
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`⚠️  Port ${port} occupé, tentative sur le port ${port + 1}...`);
-      startServer(port + 1);
-    } else {
-      console.error('Erreur serveur:', err);
-      process.exit(1);
-    }
+process.on('SIGINT', () => {
+  console.log('SIGINT reçu, arrêt du serveur...');
+  server.close(() => {
+    console.log('Serveur arrêté proprement');
+    process.exit(0);
   });
-
-  // Gestion propre de l'arrêt
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM reçu, arrêt du serveur...');
-    server.close(() => {
-      console.log('Serveur arrêté proprement');
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', () => {
-    console.log('SIGINT reçu, arrêt du serveur...');
-    server.close(() => {
-      console.log('Serveur arrêté proprement');
-      process.exit(0);
-    });
-  });
-
-  return server;
-}
-
-// Démarrage du serveur avec gestion des conflits de port
-startServer(PORT);
+});
