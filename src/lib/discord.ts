@@ -1,0 +1,344 @@
+const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID
+const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI || 'https://flashbackfa-entreprise.fr/auth/callback'
+const DISCORD_API_BASE = 'https://discord.com/api/v10'
+const DISCORD_CLIENT_SECRET = import.meta.env.VITE_DISCORD_CLIENT_SECRET
+const DISCORD_BOT_TOKEN = import.meta.env.VITE_DISCORD_BOT_TOKEN
+
+// IDs des rôles depuis le .env
+const ROLE_IDS = {
+  STAFF: import.meta.env.VITE_MAIN_GUILD_STAFF_ROLE_ID,
+  PATRON: import.meta.env.VITE_MAIN_GUILD_PATRON_ROLE_ID,
+  CO_PATRON: import.meta.env.VITE_MAIN_GUILD_COPATRON_ROLE_ID,
+  DOT: import.meta.env.VITE_DOT_GUILD_DOT_ROLE_ID,
+  DOT_STAFF: import.meta.env.VITE_DOT_GUILD_STAFF_ROLE_ID
+}
+
+// ID du fondateur (superadmin par défaut)
+const FOUNDER_DISCORD_ID = '462716512252329996'
+
+// Guild IDs
+const MAIN_GUILD_ID = import.meta.env.VITE_MAIN_GUILD_ID
+const DOT_GUILD_ID = import.meta.env.VITE_DOT_GUILD_ID
+
+export interface DiscordUser {
+  id: string
+  username: string
+  discriminator: string
+  avatar?: string
+  email?: string
+  verified?: boolean
+}
+
+export interface DiscordGuild {
+  id: string
+  name: string
+  icon?: string
+  owner: boolean
+  permissions: string
+  features: string[]
+}
+
+export interface DiscordMember {
+  user: DiscordUser
+  nick?: string
+  roles: string[]
+  joined_at: string
+  premium_since?: string
+  permissions?: string
+}
+
+export interface DiscordRole {
+  id: string
+  name: string
+  color: number
+  position: number
+  permissions: string
+}
+
+export class DiscordAuth {
+  static getAuthUrl(): string {
+    if (!DISCORD_CLIENT_ID) {
+      throw new Error('DISCORD_CLIENT_ID is not configured')
+    }
+    
+    const params = new URLSearchParams({
+      client_id: DISCORD_CLIENT_ID,
+      redirect_uri: DISCORD_REDIRECT_URI,
+      response_type: 'code',
+      scope: 'identify email guilds',
+      prompt: 'consent'
+    })
+    
+    return `https://discord.com/oauth2/authorize?${params.toString()}`
+  }
+
+  static async exchangeCodeForToken(code: string): Promise<string> {
+    if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
+      throw new Error('Discord OAuth credentials not configured')
+    }
+
+    const response = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        client_secret: DISCORD_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: DISCORD_REDIRECT_URI,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.text()
+      console.error('Token exchange error:', errorData)
+      throw new Error(`Failed to exchange code for token: ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (!data.access_token) {
+      throw new Error('No access token received')
+    }
+    return data.access_token
+  }
+
+  static async getUser(token: string): Promise<DiscordUser> {
+    const response = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user')
+    }
+
+    return response.json()
+  }
+
+  static async getUserGuilds(token: string): Promise<DiscordGuild[]> {
+    const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch guilds')
+    }
+
+    return response.json()
+  }
+
+  // Utilisation du bot pour récupérer les rôles d'un utilisateur en temps réel
+  static async getUserRolesInGuild(userId: string, guildId: string): Promise<{
+    roles: string[]
+    member: DiscordMember | null
+  }> {
+    if (!DISCORD_BOT_TOKEN) {
+      console.warn('Bot token not configured, cannot fetch user roles')
+      return { roles: [], member: null }
+    }
+
+    try {
+      const response = await fetch(`${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}`, {
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.warn(`User ${userId} not found in guild ${guildId}`)
+          return { roles: [], member: null }
+        }
+        console.warn(`Failed to fetch member roles for guild ${guildId}:`, response.status)
+        return { roles: [], member: null }
+      }
+
+      const member = await response.json()
+      return { roles: member.roles || [], member }
+    } catch (error) {
+      console.warn(`Error fetching member roles for guild ${guildId}:`, error)
+      return { roles: [], member: null }
+    }
+  }
+
+  static async getGuildRoles(guildId: string): Promise<DiscordRole[]> {
+    if (!DISCORD_BOT_TOKEN) {
+      console.warn('Bot token not configured, cannot fetch guild roles')
+      return []
+    }
+
+    try {
+      const response = await fetch(`${DISCORD_API_BASE}/guilds/${guildId}/roles`, {
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        },
+      })
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch roles for guild ${guildId}:`, response.status)
+        return []
+      }
+
+      return response.json()
+    } catch (error) {
+      console.warn(`Error fetching roles for guild ${guildId}:`, error)
+      return []
+    }
+  }
+
+  // Récupérer les rôles en temps réel depuis Discord
+  static async refreshUserRoles(userId: string): Promise<{
+    role: string
+    roleLevel: number
+    roleName: string
+    guildName: string
+    allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[]
+  }> {
+    // Le fondateur est toujours superadmin
+    if (userId === FOUNDER_DISCORD_ID) {
+      return {
+        role: 'superadmin',
+        roleLevel: 7,
+        roleName: 'Fondateur',
+        guildName: 'Système',
+        allGuildRoles: []
+      }
+    }
+
+    const allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[] = []
+    let highestRole = { 
+      role: 'employee', 
+      roleLevel: 1, 
+      roleName: 'Employé',
+      guildName: 'Aucune',
+      allGuildRoles: []
+    }
+
+    // Vérifier la guilde principale
+    if (MAIN_GUILD_ID) {
+      try {
+        const { roles: mainGuildRoles } = await this.getUserRolesInGuild(userId, MAIN_GUILD_ID)
+        
+        const guildRoleInfo = {
+          guildId: MAIN_GUILD_ID,
+          guildName: 'Guilde Principale',
+          roles: mainGuildRoles,
+          userRole: null as any
+        }
+        
+        const roleInfo = determineUserRoleFromDiscordData(userId, mainGuildRoles, false, MAIN_GUILD_ID)
+        guildRoleInfo.userRole = roleInfo
+        allGuildRoles.push(guildRoleInfo)
+        
+        if (roleInfo.roleLevel > highestRole.roleLevel) {
+          highestRole = {
+            ...roleInfo,
+            guildName: 'Guilde Principale',
+            allGuildRoles
+          }
+        }
+      } catch (error) {
+        console.warn('Error fetching main guild roles:', error)
+      }
+    }
+
+    // Vérifier la guilde DOT
+    if (DOT_GUILD_ID) {
+      try {
+        const { roles: dotGuildRoles } = await this.getUserRolesInGuild(userId, DOT_GUILD_ID)
+        
+        const guildRoleInfo = {
+          guildId: DOT_GUILD_ID,
+          guildName: 'Guilde DOT',
+          roles: dotGuildRoles,
+          userRole: null as any
+        }
+        
+        const roleInfo = determineUserRoleFromDiscordData(userId, dotGuildRoles, false, DOT_GUILD_ID)
+        guildRoleInfo.userRole = roleInfo
+        allGuildRoles.push(guildRoleInfo)
+        
+        if (roleInfo.roleLevel > highestRole.roleLevel) {
+          highestRole = {
+            ...roleInfo,
+            guildName: 'Guilde DOT',
+            allGuildRoles
+          }
+        }
+      } catch (error) {
+        console.warn('Error fetching DOT guild roles:', error)
+      }
+    }
+
+    return {
+      ...highestRole,
+      allGuildRoles
+    }
+  }
+}
+
+export function determineUserRoleFromDiscordData(
+  userId: string, 
+  userRoles: string[], 
+  isOwner: boolean,
+  guildId: string
+): {
+  role: string
+  roleLevel: number
+  roleName: string
+} {
+  // Le fondateur est toujours superadmin
+  if (userId === FOUNDER_DISCORD_ID) {
+    return { role: 'superadmin', roleLevel: 7, roleName: 'Fondateur' }
+  }
+
+  // Propriétaire de guilde
+  if (isOwner) {
+    if (guildId === DOT_GUILD_ID) {
+      return { role: 'dot', roleLevel: 5, roleName: 'DOT' }
+    }
+    return { role: 'patron', roleLevel: 4, roleName: 'Patron' }
+  }
+
+  // Vérifier les rôles par priorité (du plus élevé au plus bas)
+  if (ROLE_IDS.STAFF && userRoles.includes(ROLE_IDS.STAFF)) {
+    return { role: 'superviseur', roleLevel: 6, roleName: 'Staff' }
+  }
+  
+  if (ROLE_IDS.DOT_STAFF && userRoles.includes(ROLE_IDS.DOT_STAFF)) {
+    return { role: 'superviseur', roleLevel: 6, roleName: 'Staff DOT' }
+  }
+  
+  if (ROLE_IDS.DOT && userRoles.includes(ROLE_IDS.DOT)) {
+    return { role: 'dot', roleLevel: 5, roleName: 'DOT' }
+  }
+  
+  if (ROLE_IDS.PATRON && userRoles.includes(ROLE_IDS.PATRON)) {
+    return { role: 'patron', roleLevel: 4, roleName: 'Patron' }
+  }
+  
+  if (ROLE_IDS.CO_PATRON && userRoles.includes(ROLE_IDS.CO_PATRON)) {
+    return { role: 'co_patron', roleLevel: 3, roleName: 'Co-Patron' }
+  }
+
+  // Aucun rôle spécial = employé
+  return { role: 'employee', roleLevel: 1, roleName: 'Employé' }
+}
+
+export async function getHighestRoleFromAllGuilds(
+  userId: string,
+  guilds: DiscordGuild[]
+): Promise<{
+  role: string
+  roleLevel: number
+  roleName: string
+  guildName: string
+  allGuildRoles: { guildId: string; guildName: string; roles: string[]; userRole: any }[]
+}> {
+  return await DiscordAuth.refreshUserRoles(userId)
+}
