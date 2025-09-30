@@ -13,7 +13,6 @@ export default defineConfig({
       input: {
         main: 'index.html'
       },
-      external: ['server.js', 'src/server/**'],
       output: {
         manualChunks: undefined,
         entryFileNames: 'assets/[name]-[hash].mjs',
