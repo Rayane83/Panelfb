@@ -9,10 +9,12 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     ssr: false,
+    target: 'esnext',
     rollupOptions: {
       input: {
         main: 'index.html'
       },
+      external: [],
       output: {
         manualChunks: undefined,
         entryFileNames: 'assets/[name]-[hash].mjs',
