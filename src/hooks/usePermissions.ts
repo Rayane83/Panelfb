@@ -13,7 +13,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: false,
     config_staff: false,
     company_config: false,
-    superadmin: false
+    superadmin: false,
+    hwip_admin: false
   },
   co_patron: {
     dashboard: true,
@@ -27,7 +28,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: true,
     config_staff: false,
     company_config: false,
-    superadmin: false
+    superadmin: false,
+    hwip_admin: false
   },
   patron: {
     dashboard: true,
@@ -41,7 +43,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: true,
     config_staff: false,
     company_config: true,
-    superadmin: false
+    superadmin: false,
+    hwip_admin: false
   },
   dot: {
     dashboard: true,
@@ -55,7 +58,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: false,
     config_staff: false,
     company_config: false,
-    superadmin: false
+    superadmin: false,
+    hwip_admin: false
   },
   staff: {
     dashboard: true,
@@ -69,7 +73,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: true,
     config_staff: true,
     company_config: true,
-    superadmin: true
+    superadmin: true,
+    hwip_admin: true
   },
   superadmin: {
     dashboard: true,
@@ -83,7 +88,8 @@ const PERMISSIONS_MATRIX = {
     qualifications: true,
     config_staff: true,
     company_config: true,
-    superadmin: true
+    superadmin: true,
+    hwip_admin: true
   }
 }
 
@@ -105,6 +111,8 @@ export function usePermissions() {
         return hasPermission('superadmin')
       case '/staff':
         return hasPermission('config_staff')
+      case '/hwip-admin':
+        return hasPermission('hwip_admin')
       default:
         return true
     }

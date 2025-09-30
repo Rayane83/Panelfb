@@ -16,7 +16,8 @@ import {
   Shield, 
   User, 
   Building,
-  ChevronDown
+  ChevronDown,
+  Lock
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -124,6 +125,19 @@ export function Header() {
               </Link>
             </Button>
           )}
+          
+          {hasPermission('hwip_admin') && (
+            <Button
+              variant={location.pathname === '/hwip-admin' ? 'default' : 'ghost'}
+              size="sm"
+              asChild
+            >
+              <Link to="/hwip-admin">
+                <Lock className="h-4 w-4 mr-2" />
+                HWIP
+              </Link>
+            </Button>
+          )}
         </nav>
 
         {/* Menu utilisateur */}
@@ -179,6 +193,15 @@ export function Header() {
                 <Link to="/patron-config" className="cursor-pointer">
                   <Building className="mr-2 h-4 w-4" />
                   Configuration
+                </Link>
+              </DropdownMenuItem>
+            )}
+            
+            {hasPermission('hwip_admin') && (
+              <DropdownMenuItem asChild>
+                <Link to="/hwip-admin" className="cursor-pointer">
+                  <Lock className="mr-2 h-4 w-4" />
+                  HWIP Admin
                 </Link>
               </DropdownMenuItem>
             )}
