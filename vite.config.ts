@@ -8,6 +8,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    ssr: false,
     rollupOptions: {
       input: {
         main: 'index.html'
