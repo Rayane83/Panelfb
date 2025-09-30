@@ -16,15 +16,19 @@ export default defineConfig({
       external: ['server.js', 'src/server/**'],
       output: {
         manualChunks: undefined,
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
+        entryFileNames: 'assets/[name]-[hash].mjs',
+        chunkFileNames: 'assets/[name]-[hash].mjs',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        format: 'es'
       }
     }
   },
   server: {
     port: 3000,
-    host: true
+    host: true,
+    headers: {
+      'Content-Type': 'application/javascript'
+    }
   },
   define: {
     'import.meta.env.VITE_DISCORD_CLIENT_ID': JSON.stringify('1402231031804723210'),
